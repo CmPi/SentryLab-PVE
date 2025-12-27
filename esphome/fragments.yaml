@@ -1,0 +1,37 @@
+# Minimal example to monitor a NAS CPU temperature from Home Assistant
+# and indicate its status with an RGB LED. 
+# Adjust temperature thresholds and entity IDs as needed.
+
+
+
+# To be inserted in your device 'sensor:' section
+- platform: homeassistant
+  id: nas_temp_input
+  entity_id: sensor.<YOUR PROXMOX HOSTNAME>_cpu_temp 
+  on_value:
+    then:
+      - script.execute:
+          id: sentrylab_alert_logic
+          val: !lambda "return x;"
+
+
+
+# To be inserted in your device 'script:' section
+# Requires the existence of a light entity with id: led_rgb
+- id: sentrylab_alert_logic
+  parameters:
+    val: float
+  then:
+    - lambda: |-
+        float r=0, g=0, b=0;
+        if (val > 65.0) r = 1.0;           // Red (Overheat)
+        else if (val > 50.0) {r=1; g=0.4;} // Orange (High Charge)
+        else if (val > 30.0) g = 1.0;      // Green (Normal)
+        if (val <= 30.0) {
+          id(led_rgb).turn_off().perform();
+        } else {
+          auto call = id(led_rgb).turn_on();
+          call.set_rgb(r, g, b);
+          call.set_brightness(0.2);
+          call.perform();
+        }
