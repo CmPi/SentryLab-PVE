@@ -31,22 +31,6 @@ SentryLab-PVE/
     ├── sentrylab-witty.yaml   # Full ESPHome example for Witty Cloud
     └── fragments.yaml         # Universal code blocks for any RGB LED
 
-# SentryLab-PVE 🛡️
-**Advanced Monitoring for Proxmox/NAS with MQTT & ESPHome Integration.**
-
-`SentryLab-PVE` is a lightweight, modular monitoring suite designed for Proxmox hosts and NAS systems. It collects hardware metrics (Temperature, ZFS health, NVMe Wear/Smart) and broadcasts them via MQTT for real-time visualization on Home Assistant and ESPHome-based physical displays.
-
----
-
-## 🚀 Key Features
-* **Logical Separation**: Metrics are split into specialized scripts (Temp, ZFS, Wear, Health).
-* **Smart Automation**: Driven by Systemd Timers (replaces old-school crontabs).
-* **Physical Dashboard**: Optimized for ESP8266/ESP32 (Witty Cloud) to provide visual alerts (RGB LED color coding).
-* **Safe Execution**: NVMe SMART checks are optimized to avoid waking up sleeping drives.
-* **AI-Ready**: Generates CSV maps of your hardware to help LLMs generate perfect Home Assistant dashboards.
-
----
-
 ## 🛠️ Installation & Setup Guide
 
 ### 1. Deployment
