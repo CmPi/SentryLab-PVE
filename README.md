@@ -13,7 +13,7 @@
 ---
 
 ## 📂 Repository Structure
-```text
+
 SentryLab-PVE/
 ├── install.sh                # Main installer (deploys scripts & units)
 ├── sentrylab-config.conf      # Central configuration (MQTT, Hostname)
