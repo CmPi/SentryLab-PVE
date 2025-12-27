@@ -47,7 +47,7 @@ sudo ./install.sh
 
 Note: The installer copies scripts to /usr/local/bin/ and systemd units to /etc/systemd/system/.
 
-2. Configuration
+### 2. Configuration
 Before starting the services, you must configure your MQTT broker settings:
 
 sudo nano /usr/local/etc/sentrylab/sentrylab-config.conf
@@ -60,7 +60,7 @@ MQTT_USER / MQTT_PASS: MQTT Credentials.
 
 HOST_NAME: The identifier for Home Assistant (e.g., albusnexus).
 
-3. Manual Testing (Debug Mode)
+### 3. Manual Testing (Debug Mode)
 Verify your configuration by running any script with the DEBUG flag. This prints the JSON output and attempts to publish to MQTT:
 
 # Test temperatures
@@ -69,16 +69,12 @@ DEBUG=true /usr/local/bin/sentrylab-temp.sh
 # Test ZFS
 DEBUG=true /usr/local/bin/sentrylab-zfs.sh
 
-4. Enable Automation
+### 4. Enable Automation
 Once verified, activate the systemd timers to start periodic monitoring:
-
 
 sudo sentrylab-start
 
-
 To stop everything for maintenance, use sudo sentrylab-stop.
-
-
 
 ## 💡 ESPHome Visual Alerts
 The `esphome/sentrylab-witty.yaml` provides a turnkey solution for a **Witty Cloud** module.
