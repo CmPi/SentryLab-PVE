@@ -1,0 +1,19 @@
+#
+# @file /etc/systemd/system/sentrylab-discovery.service
+# @author CmPi <cmpi@webe.fr>
+# @repo https://github.com/CmPi/SentryLab-PVE
+# @brief Service "One-shot" pour enregistrer les capteurs dans Home Assistant au démarrage
+#
+
+[Unit]
+Description=SentryLab HA Auto-Discovery
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=oneshot
+ExecStart=/usr/local/bin/sentrylab-discovery.sh
+RemainAfterExit=yes
+
+[Install]
+WantedBy=multi-user.target

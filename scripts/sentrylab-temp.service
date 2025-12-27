@@ -1,0 +1,14 @@
+#
+# @file /etc/systemd/system/sentrylab-temp.service
+# @author CmPi <cmpi@webe.fr>
+# @repo https://github.com/CmPi/SentryLab-PVE
+# @brief Service d'exécution du script de relevé thermique
+#
+
+[Unit]
+Description=SentryLab Metrics (Temp)
+After=network.target
+
+[Service]
+Type=oneshot
+ExecStart=/usr/local/bin/sentrylab-temp.sh

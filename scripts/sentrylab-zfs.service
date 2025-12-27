@@ -1,0 +1,14 @@
+#
+# @file /etc/systemd/system/sentrylab-zfs.service
+# @author CmPi <cmpi@webe.fr>
+# @repo https://github.com/CmPi/SentryLab-PVE
+# @brief Service d'exécution du relevé des pools ZFS
+#
+
+[Unit]
+Description=SentryLab ZFS Health Metrics
+After=network.target
+
+[Service]
+Type=oneshot
+ExecStart=/usr/local/bin/sentrylab-zfs.sh

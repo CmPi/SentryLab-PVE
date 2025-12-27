@@ -1,0 +1,96 @@
+#!/bin/bash
+#
+# @file /usr/local/bin/sentrylab-temp.sh
+# @author CmPi <cmpi@webe.fr>
+# @brief Releve les températures CPU, NVMe et NAS ambient et les publie via MQTT
+# @date 2025-12-27
+# @version 1.1.361
+# @usage À exécuter périodiquement (ex: via cron ou timer systemd)
+# @notes * make it executable as usual using the command:
+#          chmod +x /usr/local/bin/*.sh
+#        * set DEBUG to true in config.conf and run it in simulation mode
+#
+
+set -euo pipefail
+
+# --- Include configuration et fonctions ---
+if [ -f "$(dirname "$0")/sentrylab-utils.sh" ]; then
+    source "$(dirname "$0")/sentrylab-utils.sh"
+else
+    source /usr/local/bin/sentrylab-utils.sh
+fi
+
+# --- Initialisation JSON ---
+JSON=$(jq -n '{}')
+
+log_debug "--- NAS TEMP SCAN STARTING ---"
+
+# --- 1. CPU Temperature ---
+CPU_TEMP=$(sensors -j | jq -r '."coretemp-isa-0000"?["Package id 0"]?["temp1_input"] // empty')
+if [[ -n "$CPU_TEMP" ]]; then
+    JSON=$(jq --argjson v "$CPU_TEMP" '. + {cpu: $v}' <<<"$JSON")
+    log_debug "CPU Temp: $CPU_TEMP°C"
+fi
+
+# --- 2. NAS Ambient Temperature ---
+ACPI_HWMON=$(grep -l "acpitz" /sys/class/hwmon/hwmon*/name 2>/dev/null | head -n1 | cut -d/ -f5)
+if [[ -n "$ACPI_HWMON" ]]; then
+    RAW_AMB=$(cat "/sys/class/hwmon/$ACPI_HWMON/temp1_input")
+    NAS_AMB=$(awk "BEGIN{printf \"%.1f\", $RAW_AMB/1000}")
+    JSON=$(jq --argjson v "$NAS_AMB" '. + {chassis: $v}' <<<"$JSON")
+    log_debug "chassis: $NAS_AMB°C"
+fi
+
+# --- 3. NVMe Temperatures ---
+for hw_path in /sys/class/hwmon/hwmon*; do
+    hw_name=$(cat "$hw_path/name" 2>/dev/null || echo "")
+    [[ "$hw_name" == "nvme" ]] || continue
+    hw_num=$(basename "$hw_path")
+    nvme_link=$(readlink -f "$hw_path")
+    nvme_dev=$(echo "$nvme_link" | grep -oP 'nvme\d+' | head -n1)
+    if [[ -z "$nvme_dev" ]]; then
+        log_debug "Could not determine nvme device for $hw_num"
+        continue
+    fi
+    SN=$(cat "/sys/class/nvme/$nvme_dev/serial" 2>/dev/null | tr -d ' ')
+    if [[ -z "$SN" ]]; then
+        log_debug "Could not retrieve serial number for $nvme_dev"
+        continue
+    fi
+    SN_LOWER=$(echo "$SN" | tr '[:upper:]' '[:lower:]')
+    log_debug "Processing $hw_num -> $nvme_dev (S/N: $SN)"
+    
+    temp_count=0
+    for t_file in "$hw_path"/temp*_input; do
+        [[ -f "$t_file" ]] || continue
+        temp_num=$(basename "$t_file" | sed 's/temp\([0-9]*\)_input/\1/')
+        raw_val=$(cat "$t_file" 2>/dev/null || echo "0")
+        temp_val=$(awk "BEGIN{printf \"%.1f\", $raw_val/1000}")
+        label_file="${t_file%_input}_label"
+        if [[ -f "$label_file" ]]; then
+            label=$(cat "$label_file" | tr '[:upper:]' '[:lower:]' | tr ' ' '_')
+        else
+            case $temp_num in
+                1) label="composite" ;;
+                2) label="sensor1" ;;
+                3) label="sensor2" ;;
+                *) label="sensor$temp_num" ;;
+            esac
+        fi
+        key="nvme_${SN_LOWER}_${label}"
+        JSON=$(jq --arg k "$key" --arg v "$temp_val" '. + {($k): ($v | tonumber)}' <<<"$JSON")
+        log_debug "  $nvme_dev $label (temp$temp_num): $temp_val°C"
+        temp_count=$((temp_count + 1))
+    done
+    log_debug "  Found $temp_count temperature sensor(s) for $nvme_dev"
+done
+
+# --- Publish JSON to MQTT (No-Retain) ---
+mqtt_publish_no_retain "$TEMP_TOPIC" "$JSON"
+
+log_debug "--- NAS TEMP SCAN COMPLETE ---"
+
+# --- Test mode ---
+if [[ "${BASH_SOURCE[0]}" == "${0}" ]]; then
+    [[ "${DEBUG:-false}" == "true" ]] && echo "$JSON" | jq .
+fi
