@@ -1,0 +1,17 @@
+# --- SentryLab-PVE Ignore Rules ---
+
+# Sensitive configuration files (MUST NEVER BE UPLOADED)
+config.conf
+secrets.yaml
+
+# Windows specific files
+Thumbs.db
+desktop.ini
+$RECYCLE.BIN/
+
+# VS Code specific
+.vscode/
+
+# System and temporary files
+*.log
+.DS_Store
