@@ -14,6 +14,8 @@
 
 ## 📂 Repository Structure
 
+
+```text
 SentryLab-PVE/
 ├── install.sh                # Main installer (deploys scripts & units)
 ├── sentrylab-config.conf      # Central configuration (MQTT, Hostname)
@@ -30,15 +32,18 @@ SentryLab-PVE/
 └── esphome/                   # IoT Monitoring
     ├── sentrylab-witty.yaml   # Full ESPHome example for Witty Cloud
     └── fragments.yaml         # Universal code blocks for any RGB LED
+```
 
 ## 🛠️ Installation & Setup Guide
 
 ### 1. Deployment
+
 Clone the repository to your Proxmox host and run the installer:
 ```bash
 git clone [https://github.com/CmPi/SentryLab-PVE.git](https://github.com/CmPi/SentryLab-PVE.git)
 cd SentryLab-PVE
 sudo ./install.sh
+```
 
 Note: The installer copies scripts to /usr/local/bin/ and systemd units to /etc/systemd/system/.
 
