@@ -356,7 +356,7 @@ box_begin() {
 # Display a line in a box with color support and perfect alignment
 # Usage: box_line "Label:" "Value" [width]
 # Affiche une ligne stylisée avec gestion des couleurs et de l'alignement
-bbox_line() {
+box_line() {
     [[ "${DEBUG:-false}" != "true" ]] && return 0
     
     local text="$1"
