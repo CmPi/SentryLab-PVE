@@ -364,51 +364,54 @@ box_line() {
     
     local input="${1:-}"
     local width=${2:-$BOX_WIDTH}
-    # Safety check: Ensure width is numeric
     [[ ! "$width" =~ ^[0-9]+$ ]] && width=80
     local max_in=$((width - 4))
 
-    # Define colors using Octal (highly compatible)
+    # Define Colors
     local RED='\033[31m'
     local GRN='\033[32m'
     local YEL='\033[33m'
+    local CYA='\033[36m'  # Cyan for general values
     local CLR='\033[0m'
 
     local text=""
     
-    # 1. Semantic Color Logic
     if [[ "$input" == *": "* ]]; then
         local label="${input%%: *}: "
         local value="${input#*: }"
         
-        if [[ "$value" == "ERROR"* ]]; then value="${RED}${value}${CLR}"
-        elif [[ "$value" == "INFO"* ]]; then value="${GRN}${value}${CLR}"
-        elif [[ "$value" == "SKIP"* || "$value" =~ "Disabled" ]]; then value="${YEL}${value}${CLR}"
+        # 1. Check for specific status colors first
+        if [[ "$value" == "ERROR"* || "$value" == "false" ]]; then 
+            value="${RED}${value}${CLR}"
+        elif [[ "$value" == "INFO"* || "$value" == "true" || "$value" == "Directory exists" ]]; then 
+            value="${GRN}${value}${CLR}"
+        elif [[ "$value" == "SKIP"* || "$value" =~ "Disabled" ]]; then 
+            value="${YEL}${value}${CLR}"
+        else
+            # 2. DEFAULT COLOR for any other value (e.g., IP addresses, paths, hostnames)
+            value="${CYA}${value}${CLR}"
         fi
         text="${label}${value}"
     else
+        # For informative text without a colon, apply keywords or keep plain
         text="$input"
         if [[ "$text" == "ERROR"* ]]; then text="${RED}${text}${CLR}"
         elif [[ "$text" == "INFO"* ]]; then text="${GRN}${text}${CLR}"
-        elif [[ "$text" == "SKIP"* || "$text" =~ "Disabled" ]]; then text="${YEL}${text}${CLR}"
         fi
     fi
 
-    # 2. Precise Strip for Length (Using sed with hex for accuracy)
+    # Precise Strip for Length Calculation
     local plain_content
     plain_content=$(echo -ne "$text" | sed 's/\x1b\[[0-9;]*m//g')
     local total_len=${#plain_content}
 
-    # 3. Output Render
+    # Render Loop
     while [[ ${#plain_content} -gt 0 ]]; do
         local chunk_plain="${plain_content:0:$max_in}"
         local padding=$((max_in - ${#chunk_plain}))
-        
-        # Calculate padding string
         local pad_str=$(printf "%*s" "$padding" "")
 
         if [[ ${#plain_content} -eq $total_len ]]; then
-            # %b expands the \033 into real color
             printf "│ %b%s │\n" "$text" "$pad_str"
         else
             printf "│ %s%s │\n" "$chunk_plain" "$pad_str"
