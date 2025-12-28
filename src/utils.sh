@@ -313,7 +313,10 @@ box_title() {
 BOX_WIDTH=80
 
 strip_colors() {
-    echo -e "$1" | sed 's/\x1b\[[0-9;]*m//g'
+    local text="${1:-}"
+    [[ -z "$text" ]] && return 0
+    local clean="${text//[$'\e']\[[0-9;]*m/}"
+    printf '%s' "$clean"
 }
 
 box_begin() {
@@ -359,36 +362,55 @@ box_begin() {
 box_line() {
     [[ "${DEBUG:-false}" != "true" ]] && return 0
     
-    local text="$1"
-    # Ensure width is treated as an integer, default to BOX_WIDTH
+    local input="${1:-}"
     local width=${2:-$BOX_WIDTH}
-    
-    # Calculate max internal width
+    [[ ! "$width" =~ ^[0-9]+$ ]] && width=$BOX_WIDTH
     local max_in=$((width - 4))
+
+    local text=""
     
-    # Semantic Colors - Apply directly to the text variable
-    if [[ "$text" == "ERROR:"* ]]; then
-        text="\e[31m${text}\e[0m"
-    elif [[ "$text" == "INFO:"* ]]; then
-        text="\e[32m${text}\e[0m"
-    elif [[ "$text" == "SKIP:"* ]] || [[ "$text" =~ "Disabled" ]]; then
-        text="\e[33m${text}\e[0m"
+    # 1. Logic for "Label: Value" vs "Plain Text"
+    if [[ "$input" == *": "* ]]; then
+        local label="${input%%: *}: "
+        local value="${input#*: }"
+        
+        # Color the Value part only
+        if [[ "$value" == "ERROR"* ]]; then value="\e[31m${value}\e[0m"
+        elif [[ "$value" == "INFO"* ]]; then value="\e[32m${value}\e[0m"
+        elif [[ "$value" == "SKIP"* || "$value" =~ "Disabled" || "$value" =~ "Skipped" ]]; then 
+            value="\e[33m${value}\e[0m"
+        fi
+        text="${label}${value}"
+    else
+        # No colon-space found, color the whole line if it matches keywords
+        text="$input"
+        if [[ "$text" == "ERROR"* ]]; then text="\e[31m${text}\e[0m"
+        elif [[ "$text" == "INFO"* ]]; then text="\e[32m${text}\e[0m"
+        elif [[ "$text" == "SKIP"* || "$text" =~ "Disabled" || "$text" =~ "Skipped" ]]; then 
+            text="\e[33m${text}\e[0m"
+        fi
     fi
 
-    local plain_content
-    plain_content=$(strip_colors "$text")
+    # 2. Pure Bash Strip (Bulletproof)
+    local plain_content="${text//[$'\e']\[[0-9;]*m/}"
     local total_len=${#plain_content}
 
-    # Your original multiline wrap logic
+    # Handle empty line case
+    if [[ $total_len -eq 0 ]]; then
+        printf "│ %*s │\n" "$max_in" ""
+        return 0
+    fi
+
+    # 3. Multiline wrap logic
     while [[ ${#plain_content} -gt 0 ]]; do
         local chunk_plain="${plain_content:0:$max_in}"
-        local chunk_len=${#chunk_plain}
-        local padding=$((max_in - chunk_len))
+        local padding=$((max_in - ${#chunk_plain}))
         
-        # Use [[ ]] for safe comparison
         if [[ ${#plain_content} -eq $total_len ]]; then
+            # First line: Use %b to render the colors in 'text'
             printf "│ %b%*s │\n" "$text" "$padding" ""
         else
+            # Wrapped lines: Use %s for the plain chunk
             printf "│ %s%*s │\n" "$chunk_plain" "$padding" ""
         fi
         
@@ -396,6 +418,7 @@ box_line() {
         [[ -z "$plain_content" ]] && break
     done
 }
+
 
 
 # End a box section
