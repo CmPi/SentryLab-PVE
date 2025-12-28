@@ -265,7 +265,14 @@ command_exists() {
 
 # Check required dependencies
 check_dependencies() {
-    local required_commands=("mosquitto_pub")
+    local exit_if_missing="${1:-true}"
+
+    local required_commands=("mosquitto_pub" "jq")
+
+    [[ "${PUSH_ZFS:-false}" == "true" ]] && required_commands+=("zpool")
+    [[ "${PUSH_NON_ZFS:-false}" == "true" ]] && required_commands+=("df")
+#   [[ "${PUSH_NVME_TEMP:-false}" == "true" || "${PUSH_NVME_WEAR:-false}" == "true" || "${PUSH_NVME_HEALTH:-false}" == "true" ]] && required_commands+=("nvme")
+        
     local missing_commands=()
 
     for cmd in "${required_commands[@]}"; do
@@ -275,9 +282,19 @@ check_dependencies() {
     done
 
     if [[ ${#missing_commands[@]} -gt 0 ]]; then
-        log_error "Missing required commands: ${missing_commands[*]}"
-        log_error "Install with: apt-get install mosquitto-clients"
-        exit 1
+        if [[ "$exit_if_missing" == "true" ]]; then
+            log_error "Missing required commands: ${missing_commands[*]}"
+            log_error "Install with: apt-get install mosquitto-clients"
+            exit 1
+        else
+            echo "ERROR: Missing commands: ${missing_commands[*]}"
+            return 1
+        fi
+    else
+        if [[ "$exit_if_missing" == "false" ]]; then
+            echo "INFO: All required commands are available"
+            return 0    
+        fi
     fi
 }
 
@@ -285,13 +302,14 @@ check_dependencies() {
 # DISPLAY CONFIGURATION - BOX DRAWING FUNCTIONS
 # ==============================================================================
 
-# Supprime les codes ANSI pour calculer la longueur réelle affichée
-strip_colors() {
-    echo -e "$1" | sed 's/\x1b\[[0-9;]*m//g'
-}
-
-# Default box width
 BOX_WIDTH=80
+
+strip_colors() {
+    local text="${1:-}"
+    [[ -z "$text" ]] && return 0
+    local clean="${text//[$'\e']\[[0-9;]*m/}"
+    printf '%s' "$clean"
+}
 
 # Titre Majeur (Bordure double, centré)
 box_title() {
@@ -310,15 +328,6 @@ box_title() {
 
 # Begin a box section with a title (Visible only in DEBUG mode)
 # Usage: box_begin "Title" [width]
-BOX_WIDTH=80
-
-strip_colors() {
-    local text="${1:-}"
-    [[ -z "$text" ]] && return 0
-    local clean="${text//[$'\e']\[[0-9;]*m/}"
-    printf '%s' "$clean"
-}
-
 box_begin() {
     [[ "${DEBUG:-false}" != "true" ]] && return 0
     local raw_title="${1:-}"
@@ -483,6 +492,10 @@ display_config() {
     box_end
     echo
 
+    box_begin "Dependencies"
+    box_line "$(check_dependencies false)"
+    box_end
+
     box_begin "Configuration File"
     box_line "Path: $CONFIG_PATH"
     box_end
@@ -495,6 +508,7 @@ display_config() {
 # Display configuration when run directly
 if [[ "${BASH_SOURCE[0]}" == "${0}" ]]; then
 # Check dependencies on load
-    check_dependencies
     display_config
+else
+    check_dependencies   
 fi
