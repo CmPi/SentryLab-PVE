@@ -338,7 +338,7 @@ box_begin() {
         title_len=$((max_title_len + 1))
     fi
     # 3. Calculate Dashes and Print
-    local dash_count=$((width - title_len - 4))
+    local dash_count=$((width - title_len - 5))
     [[ $dash_count -lt 0 ]] && dash_count=0
     printf "┌─ %b " "$raw_title"
     printf '─%.0s' $(seq 1 $dash_count)
