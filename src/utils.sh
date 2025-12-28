@@ -286,6 +286,9 @@ strip_colors() {
     echo -e "$1" | sed 's/\x1b\[[0-9;]*m//g'
 }
 
+# Default box width
+BOX_WIDTH=80
+
 # Titre Majeur (Bordure double, centré)
 box_title() {
     [[ "${DEBUG:-false}" != "true" ]] && return 0
@@ -303,14 +306,41 @@ box_title() {
 
 # Begin a box section with a title (Visible only in DEBUG mode)
 # Usage: box_begin "Title" [width]
+BOX_WIDTH=80
+
+strip_colors() {
+    echo -e "$1" | sed 's/\x1b\[[0-9;]*m//g'
+}
+
 box_begin() {
     [[ "${DEBUG:-false}" != "true" ]] && return 0
-    local title="$1"
-    local width="${2:-80}"
-    local title_len=${#title}
+    local raw_title="${1:-}"
+    local width="${2:-$BOX_WIDTH}"
+    # Calculate length based on stripped text to ignore ANSI codes
+    local plain_title=$(strip_colors "$raw_title")
+    local title_len=${#plain_title}
+    # 1. Handle Empty Title
+    if [[ -z "$plain_title" ]]; then
+        local dash_count=$((width - 2))
+        [[ $dash_count -lt 0 ]] && dash_count=0
+        printf "┌"
+        printf '─%.0s' $(seq 1 $dash_count)
+        printf "┐\n"
+        return 0
+    fi
+    # 2. Handle Title Too Long (Truncate if necessary)
+    # Max title length = width - 6 (corners: 2, padding: 2, dashes: 2)
+    local max_title_len=$((width - 6))
+    if [[ $title_len -gt $max_title_len ]]; then
+        # Truncate the original (potentially colored) title
+        # We use the plain length to determine where to cut
+        raw_title="${raw_title:0:$max_title_len}…"
+        title_len=$((max_title_len + 1))
+    fi
+    # 3. Calculate Dashes and Print
     local dash_count=$((width - title_len - 4))
     [[ $dash_count -lt 0 ]] && dash_count=0
-    printf "┌─ %s " "$title"
+    printf "┌─ %b " "$raw_title"
     printf '─%.0s' $(seq 1 $dash_count)
     printf "┐\n"
 }
@@ -358,11 +388,13 @@ box_line() {
 # Usage: box_end [width]
 box_end() {
     [[ "${DEBUG:-false}" != "true" ]] && return 0
-    local width="${1:-80}"
+    local width="${1:-$BOX_WIDTH}"
     local dash_count=$((width - 2))
     [[ $dash_count -lt 0 ]] && dash_count=0
     printf "└"
-    printf '─%.0s' $(seq 1 $dash_count)
+    if [[ $dash_count -gt 0 ]]; then
+        printf '─%.0s' $(seq 1 $dash_count)
+    fi
     printf "┘\n"
 }
 
