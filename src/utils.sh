@@ -367,16 +367,15 @@ box_line() {
     [[ ! "$width" =~ ^[0-9]+$ ]] && width=$BOX_WIDTH
     local max_in=$((width - 4))
 
-    # Define the literal Escape characters
-    local E=$'\e'
-    local RED="${E}[31m"
-    local GRN="${E}[32m"
-    local YEL="${E}[33m"
-    local CLR="${E}[0m"
+    # Define colors using the \033 octal (most compatible)
+    local RED='\033[31m'
+    local GRN='\033[32m'
+    local YEL='\033[33m'
+    local CLR='\033[0m'
 
     local text=""
     
-    # 1. Split and Color Logic
+    # 1. Semantic Color Logic
     if [[ "$input" == *": "* ]]; then
         local label="${input%%: *}: "
         local value="${input#*: }"
@@ -394,25 +393,23 @@ box_line() {
         fi
     fi
 
-    # 2. Pure Bash Strip (Bulletproof)
-    local plain_content="${text//[$E]\[[0-9;]*m/}"
+    # 2. Fixed Strip Logic (Using sed with hex to be 100% sure)
+    # This prevents the "Stripped length: 0" error
+    local plain_content
+    plain_content=$(echo -ne "$text" | sed 's/\x1b\[[0-9;]*m//g')
     local total_len=${#plain_content}
 
-    # 3. Multiline Wrap and Render
+    # 3. Render Loop
     while [[ ${#plain_content} -gt 0 ]]; do
         local chunk_plain="${plain_content:0:$max_in}"
         local padding=$((max_in - ${#chunk_plain}))
-        
-        # Pre-calculate padding spaces so printf doesn't touch the color codes
-        local pad_str
-        pad_str=$(printf "%*s" "$padding" "")
+        local pad_str=$(printf "%*s" "$padding" "")
 
         if [[ ${#plain_content} -eq $total_len ]]; then
-            # Use echo -e for the colored line
-            echo -e "│ ${text}${pad_str} │"
+            # %b is required to turn the \033 strings into actual colors
+            printf "│ %b%s │\n" "$text" "$pad_str"
         else
-            # Use echo -e for consistency, though these lines are plain
-            echo -e "│ ${chunk_plain}${pad_str} │"
+            printf "│ %s%s │\n" "$chunk_plain" "$pad_str"
         fi
         
         plain_content="${plain_content:$max_in}"
