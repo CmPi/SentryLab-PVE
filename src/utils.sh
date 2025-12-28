@@ -356,32 +356,42 @@ box_begin() {
 # Display a line in a box with color support and perfect alignment
 # Usage: box_line "Label:" "Value" [width]
 # Affiche une ligne stylisée avec gestion des couleurs et de l'alignement
-box_line() {
+bbox_line() {
     [[ "${DEBUG:-false}" != "true" ]] && return 0
+    
     local text="$1"
-    local width="${2:-$BOX_WIDTH}"
+    # Ensure width is treated as an integer, default to BOX_WIDTH
+    local width=${2:-$BOX_WIDTH}
+    
+    # Calculate max internal width
     local max_in=$((width - 4))
+    
     # Semantic Colors - Apply directly to the text variable
     if [[ "$text" == "ERROR:"* ]]; then
         text="\e[31m${text}\e[0m"
     elif [[ "$text" == "INFO:"* ]]; then
         text="\e[32m${text}\e[0m"
-    elif [[ "$text" == "SKIP:"* ]] || [[ "$text" =~ "Disabled" ]] || [[ "$text" =~ "Skipped" ]]; then
+    elif [[ "$text" == "SKIP:"* ]] || [[ "$text" =~ "Disabled" ]]; then
         text="\e[33m${text}\e[0m"
     fi
-    local plain_content=$(strip_colors "$text")
+
+    local plain_content
+    plain_content=$(strip_colors "$text")
+    local total_len=${#plain_content}
+
     # Your original multiline wrap logic
-    while [ ${#plain_content} -gt 0 ]; do
+    while [[ ${#plain_content} -gt 0 ]]; do
         local chunk_plain="${plain_content:0:$max_in}"
-        local padding=$((max_in - ${#chunk_plain}))
-        # Check if we are on the first line to decide whether to print with colors
-        # Use the length of the current plain_content vs the total plain length
-        local current_plain_len=$(strip_colors "$text" | wc -c) # Total length for comparison
-        if [ ${#plain_content} -eq $((current_plain_len - 1)) ]; then
+        local chunk_len=${#chunk_plain}
+        local padding=$((max_in - chunk_len))
+        
+        # Use [[ ]] for safe comparison
+        if [[ ${#plain_content} -eq $total_len ]]; then
             printf "│ %b%*s │\n" "$text" "$padding" ""
         else
             printf "│ %s%*s │\n" "$chunk_plain" "$padding" ""
         fi
+        
         plain_content="${plain_content:$max_in}"
         [[ -z "$plain_content" ]] && break
     done
