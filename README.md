@@ -1,7 +1,9 @@
 # SentryLab-PVE 🛡️
-**Advanced Monitoring for Proxmox/NAS with MQTT & ESPHome Integration.**
+**Advanced Monitoring for Proxmox with MQTT & ESPHome Integration.**
 
 `SentryLab-PVE` is a lightweight, modular monitoring suite designed for Proxmox hosts and NAS systems. It collects hardware metrics (Temperature, ZFS health, NVMe Wear/Smart) and broadcasts them via MQTT for real-time visualization on Home Assistant and ESPHome-based physical displays.
+
+Tested on and deployed in my Proxmox 9.1.4.
 
 ## 🚀 Key Features
 * **Logical Separation**: Metrics are split into specialized scripts (Temp, ZFS, Wear, Health).
@@ -18,11 +20,12 @@
 ```text
 SentryLab-PVE/
 ├── install.sh                 # Main installer (deploys scripts & units)
-├── scripts/                   # Core engine
-│   ├── config.conf            # Central configuration (MQTT, Hostname)
-│   ├── start.sh               # Activation tool
-│   ├── stop.sh                # Maintenance tool
+├── src/                       # Core engine
+│   ├── sentrylab.conf         # Central configuration (MQTT, Hostname)
 │   ├── utils.sh               # Shared functions
+│   ├── discovery.sh           # Activation tool (enable all the timers)
+│   ├── start.sh               # Activation tool (enable all the timers)
+│   ├── stop.sh                # Maintenance tool (disable the timers)
 │   ├── temp.sh                # Thermal monitoring
 │   ├── zfs.sh                 # ZFS Health & Space
 │   ├── wear.sh                # NVMe Wear level
@@ -46,8 +49,21 @@ SentryLab-PVE/
 
 #### host dependencies
 
+In order to install SentryLab-PVE, ensure `git` is present on your Proxmox host:
+
+```bash
+apt update && apt install git -y
+```
+
+To actually use it, mosquito_pub and jq are required
+
+```bash
+apt update && apt install jq mosquito_pub -y
+```
+
 * **mosquitto_pub** for MQTT publication 
-* **jq** for json
+* **jq** for json manipulation
+* **git** to retrieve this tool
 
 ### 1. Deployment
 
@@ -67,24 +83,31 @@ Note: The installer copies scripts to /usr/local/bin/sentrylab/ and systemd unit
 usr/
 ├── local/           
 │   ├── etc/
-│   │   └── sentrylab.conf          # Configuration file to be modified
+│   │   └── sentrylab.conf                # Configuration file to be modified        
 │   └── bin/
 │       └── sentrylab/
-│           ├── discovery.sh        # Initial sensor discovery and MQTT declaration
-│           ├── temp.sh             # Thermal monitoring
-│           ├── zfs.sh              # ZFS oool(s) Health & Space
-│           ├── wear.sh             # NVMEs wear
-│           └── health.sh           # NVMe Smart Health
+│           ├── utils.sh                  # common functions
+│           ├── discovery.sh              # Initial sensor discovery and MQTT declaration
+│           ├── temp.sh                   # Thermal monitoring
+│           ├── zfs.sh                    # ZFS pool(s) Health & Space
+│           ├── non-zfs.sh                # Other storage places
+│           ├── wear.sh                   # NVMEs wear
+│           └── health.sh                 # NVMe Smart Health
 etc/
-└── systemd/          
-    └── system/          
-        ├── sentrylab-discovery.service
-        ├── sentrylab-temp.service
-        ├── sentrylab-temp.timer
-        ├── sentrylab-zfs.service
-        ├── sentrylab-zfs.timer
-        ├── sentrylab-smart.service
-        └── sentrylab-smart.timer
+├── systemd/          
+│   └── system/          
+│       ├── sentrylab-discovery.service
+│       ├── sentrylab-temp.service
+│       ├── sentrylab-temp.timer          # 3mn suggested
+│       ├── sentrylab-zfs.service 
+│       ├── sentrylab-zfs.timer           # 15mn
+│       ├── sentrylab-smart.service 
+│       └── sentrylab-smart.timer         # 12h
+var/
+└── lib/
+    └── sentrylab/
+        └── exports/
+            └── *.csv
          
 ```
 
@@ -93,7 +116,7 @@ etc/
 Before starting the services, you must configure your MQTT broker settings editing the configuration file (sentrylab-config.conf):
 
 ```bash
-sudo nano /usr/local/etc/sentrylab/sentrylab-config.conf
+sudo nano /usr/local/etc/sentrylab.conf
 ```
 
 Key Parameters:
@@ -105,20 +128,39 @@ MQTT_USER / MQTT_PASS: MQTT Credentials.
 HOST_NAME: The identifier for Home Assistant (e.g., albusnexus).
 
 ### 3. Manual Testing (Debug Mode)
-Verify your configuration by running any script with the DEBUG flag. This prints the JSON output and attempts to publish to MQTT:
+
+Verify your configuration by running any script with the DEBUG flag set to true. This prints the JSON output and simulates MQTT publications.
+
+# Check configuration once more
+
+```bash
+sudo nano /usr/local/bin/utils.sh
+```
+
+# Test discovery
+```bash
+sudo nano /usr/local/bin/discovery.sh
+```
 
 # Test temperatures
-DEBUG=true /usr/local/bin/sentrylab-temp.sh
+DEBUG=true /usr/local/bin/sentrylab/temp.sh
 
 # Test ZFS
-DEBUG=true /usr/local/bin/sentrylab-zfs.sh
+DEBUG=true /usr/local/bin/sentrylab/zfs.sh
 
 ### 4. Enable Automation
-Once verified, activate the systemd timers to start periodic monitoring:
+Once discovery and reporting have been verified, activate the systemd timers to start periodic monitoring:
 
-sudo sentrylab-start
+```bash
+sudo /usr/local/bin/sentrylab/start.sh
+```
 
-To stop everything for maintenance, use sudo sentrylab-stop.
+To stop everything for maintenance, use sudo stop bash.
+
+```bash
+sudo /usr/local/bin/sentrylab/stop.sh
+```
+
 
 ## 💡 ESPHome Visual Alerts
 The `esphome/sentrylab-witty.yaml` provides a turnkey solution for a **Witty Cloud** module.

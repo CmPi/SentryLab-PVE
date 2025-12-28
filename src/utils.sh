@@ -46,7 +46,6 @@ log_warn() {
 load_config() {
     local config_paths=(
         "/usr/local/etc/sentrylab.conf"
-        "$(dirname "${BASH_SOURCE[0]}")/../../etc/sentrylab.conf"
         "./sentrylab.conf"
     )
 

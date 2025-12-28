@@ -48,7 +48,8 @@ log_debug "Broker is UP! Proceeding with discovery."
 shopt -s nullglob
 
 # --- Device JSON pour Home Assistant ---
-DEVICE_JSON="{\"identifiers\": [\"$HOST_NAME\"], \"name\": \"$HOST_NAME\", \"model\": \"Node\", \"manufacturer\": \"Proxmox\"}"
+DEVICE_JSON=$(jq -n --arg hn "$HOST_NAME" '{"identifiers": [$hn], "name": $hn, "model": "Node", "manufacturer": "Proxmox"}')
+BASE_CONFIG=$(jq -n --argjson dev "$DEVICE_JSON" --arg av_t "$AVAIL_TOPIC" '{availability_topic: $av_t, dev: $dev}')
 
 log_debug "--- STARTING DISCOVERY ---"
 
@@ -454,38 +455,36 @@ for pool in $POOLS; do
 
 done
 
+# --- 4. Processing: Non-ZFS Disks ---
+if [[ "$PUSH_NON_ZFS" == "true" ]]; then
+    log_debug "Discovering standard partitions..."
+    # We exclude tmpfs, devtmpfs, and zfs to focus on physical local storage
+    df -x tmpfs -x devtmpfs -x zfs --output=target,fstype | tail -n +2 | while read -r target fstype; do
+        # Create a clean ID: / becomes root, /boot becomes boot
+        DISK_ID=$(echo "$target" | tr '/' '_' | sed 's/^_//;s/^$/root/')
+        HA_ID="${HOST_NAME}_disk_${DISK_ID}_usage"
+        
+        # Merge specific disk info into BASE_CONFIG
+        PAYLOAD=$(echo "$BASE_CONFIG" | jq \
+            --arg n "Disk Usage: $target ($fstype)" \
+            --arg id "$HA_ID" \
+            --arg st "$DISK_TOPIC" \
+            --arg v "value_json.${DISK_ID}_usage" \
+            '. + {name: $n, unique_id: $id, object_id: $id, state_topic: $st, value_template: ("{{ " + $v + " }}"), unit_of_measurement: "%", icon: "mdi:harddisk"}')
+        
+        mqtt_publish_retain "homeassistant/sensor/${HA_ID}/config" "$PAYLOAD"
+    done
+fi
+
 # On confirme la disponibilité du NAS
 mqtt_publish_retain "$AVAIL_TOPIC" "online"
 
 log_debug "--- DISCOVERY COMPLETE ---"
 
-# --- Test mode ---
+# --- Test mode and CSV export ---
 if [[ "${BASH_SOURCE[0]}" == "${0}" ]]; then
-    [[ "$DEBUG" == "true" ]] && echo "--- NAS DISCOVERY TEST ---"
-    [[ "$DEBUG" == "true" ]] && echo "NVMe devices discovered:"
-    if [[ "$DEBUG" == "true" ]]; then
-        for hw_path in /sys/class/hwmon/hwmon*; do
-            hw_name=$(cat "$hw_path/name" 2>/dev/null || echo "")
-            [[ "$hw_name" == "nvme" ]] || continue
-            nvme_link=$(readlink -f "$hw_path")
-            nvme_dev=$(echo "$nvme_link" | grep -oP 'nvme\d+' | head -n1)
-            SN=$(cat "/sys/class/nvme/$nvme_dev/serial" 2>/dev/null | tr -d ' ')
-            MODEL=$(cat "/sys/class/nvme/$nvme_dev/model" 2>/dev/null | tr -d ' ' || echo "NVMe")
-            echo "  $nvme_dev: $MODEL (S/N: $SN)"
-        done
-        echo "--- END OF TEST ---"
-        echo ""
-        echo "CSV Fragments to be given to an IA to generate HomeAssitstant dashboards cards"
-        echo ""
-        echo "--- BEGIN OF NVMe CSV ---"
-        echo "$CSV_LINES" 
-        echo "--- END OF NVMe CSV ---"
 
-        echo "--- ZFS Pools CSV Fragment ---"
-        echo "# Data map for Home Assistant entity IDs on host ${HOST_NAME} avec ApexCharts si besoin"
-        echo "$CSV_POOLS_HDR"
-        echo "$CSV_POOLS_DATA"
-        echo "--- END OF ZFS POOLS CSV ---"
-
-    fi
+    # --- CSV export using write_csv ---
+    write_csv "nvme.csv" "$CSV_LINES"
+    write_csv "zfs.csv" "$CSV_POOLS_HDR"$'\n'"$CSV_POOLS_DATA"
 fi

@@ -3,36 +3,49 @@
 # @file install.sh
 # @author CmPi <cmpi@webe.fr>
 # @repo https://github.com/CmPi/SentryLab-PVE
-# @brief Installe les scripts et services SentryLab sans les activer
-# @date 2025-12-27
+# @brief Root installation script for SentryLab-PVE
+# @date 2025-12-28
 # @version 1.1.361
 # @usage sudo ./install.sh
 #
 
-set -e
+set -euo pipefail
 
-# Vérification root
-if [ "$EUID" -ne 0 ]; then echo "Veuillez lancer en root"; exit 1; fi
+# Check if running as root
+if [[ $EUID -ne 0 ]]; then
+   echo "This script must be run as root" 
+   exit 1
+fi
 
-echo "--- INSTALLATION SENTRYLAB-PVE ---"
+CONF_FILE="/usr/local/etc/sentrylab.conf"
+DEST_DIR="/usr/local/bin/sentrylab"
+AUTO_DIR="/etc/systemd/system"
+EXPORT_DIR="/var/lib/sentrylab/csv"
 
-# 1. Création des dossiers
-mkdir -p /usr/local/bin/sentrylab
+echo "--- SentryLab Installation ---"
 
-# 2. Déploiement des scripts
-echo "Déploiement des scripts vers /usr/local/bin/..."
-cp scripts/*.sh /usr/local/bin/
-chmod +x /usr/local/bin/sentrylab-*.sh
+# 1. Create Directories
+mkdir -p "$DEST_DIR"
+mkdir -p "$EXPORT_DIR"
 
-# 3. Déploiement Systemd
-echo "Déploiement des unités Systemd..."
-cp scripts/*.{service,timer} /etc/systemd/system/
-systemctl daemon-reload
+# 2. Deploy Scripts from ./src
+echo "Deploying scripts to $DEST_DIR..."
+if [ -d "./src" ]; then
+    cp ./src/*.sh "$DEST_DIR/"
+    chmod 755 "$DEST_DIR"/*.sh
+else
+    echo "ERROR: ./src directory not found in current path!"
+    exit 1
+fi
 
-# 4. Déploiement des utilitaires de gestion
-# On les copie avec leurs nouveaux noms de commande
-cp sentrylab-start.sh /usr/local/bin/sentrylab-start
-cp sentrylab-stop.sh /usr/local/bin/sentrylab-stop
-chmod +x /usr/local/bin/sentrylab-start /usr/local/bin/sentrylab-stop
+# 3. Deploy Config (Template)
+if [ ! -f "$CONF_FILE" ]; then
+    echo "Installing configuration to $CONF_FILE..."
+    cp ./sentrylab.conf "$CONF_FILE"
+    chmod 600 "$CONF_FILE"
+else
+    echo "Configuration exists at $CONF_FILE. Skipping overwrite."
+fi
 
-echo "Terminé. Vous pouvez tester en mode debug avant de lancer 'sentrylab-start'."
+echo "Installation complete."
+echo "Next step: Update /etc/sentrylab.conf with your settings."
