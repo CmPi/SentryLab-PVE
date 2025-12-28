@@ -198,29 +198,33 @@ mqtt_publish_no_retain() {
 # Returns a status message for box_line
 write_csv() {
 local csv_file="${1:-}"
-    local arg2="${2:-}"  # Header
-    local arg3="${3:-}"  # Data (Utilise :- pour éviter unbound variable)
+    local header="${2:-}"  # Header
+    local data="${3:-}"    # Data
     local csv_content=""
     local warn=""
 
-    # 1. CAS : Désactivation totale (Tout est vide)
-    # Si on n'a même pas de header, c'est que le module est bypassé
-    if [[ -z "$arg2" && -z "$arg3" ]]; then
-        return 0 # Retourne une chaîne vide, box_line ne fera rien ou affichera vide
+    if [[ -z "${OUTPUT_CSV_DIR:-}" ]]; then
+        echo "SKIP: CSV export disabled in sentrylab.conf"
+        return 1
+    fi    
+
+    if [[ -z "$header" && -z "$data" ]]; then
+        echo "SKIP: CSV file creation disabled for this set of metrics"
+        return 0
     fi
 
     # 2. CAS : Header présent mais Data vide (Scan effectué, rien trouvé)
-    if [[ -n "$arg2" && -z "$arg3" ]]; then
-        csv_content=$(echo -e "$arg2" | sed 's/\n$//')
+    if [[ -n "$header" && -z "$data" ]]; then
+        csv_content=$(echo -e "$header" | sed 's/\n$//')
         local status_msg="INFO: Only Header (No data)"
     else
         # 3. CAS : Header + Data (Normal)
         # Validation des colonnes
-        local c_hdr=$(echo -e "$arg2" | head -n 1 | awk -F',' '{print NF}')
-        local c_dat=$(echo -e "$arg3" | sed '/^$/d' | head -n 1 | awk -F',' '{print NF}')
+        local c_hdr=$(echo -e "$header" | head -n 1 | awk -F',' '{print NF}')
+        local c_dat=$(echo -e "$data" | sed '/^$/d' | head -n 1 | awk -F',' '{print NF}')
         [[ "$c_hdr" -ne "$c_dat" ]] && warn=" (Mismatch: $c_hdr/$c_dat cols)"
-        
-        csv_content=$(printf "%s\n%s" "$(echo -e "$arg2" | sed 's/\n$//')" "$(echo -e "$arg3" | sed '/^$/d')")
+
+        csv_content=$(printf "%s\n%s" "$(echo -e "$header" | sed 's/\n$//')" "$(echo -e "$data" | sed '/^$/d')")
         local lines=$(echo "$csv_content" | wc -l)
         local status_msg="INFO: $lines lines$warn"
     fi
@@ -356,33 +360,31 @@ box_line() {
     [[ "${DEBUG:-false}" != "true" ]] && return 0
     local label="$1"
     local value="$2"
-    local width="${3:-80}"
+    local width="${3:-$BOX_WIDTH}"
     local max_in=$((width - 4))
-    
-    local RED='\e[31m'
-    local GREEN='\e[32m'
-    local YELLOW='\e[33m'
-    local NC='\e[0m'
-
-    # Coloration sémantique
-    if [[ "$value" =~ "ERROR" ]]; then
-        value="${RED}${value}${NC}"
-    elif [[ "$value" =~ "INFO" ]]; then
-        value="${GREEN}${value}${NC}"
-    elif [[ "$value" =~ "Disabled" || "$value" =~ "SKIP" ]]; then
-        value="${YELLOW}${value}${NC}"
-    fi
-
+    # Semantic Colors
+    [[ "$value" =~ "ERROR" ]] && value="\e[31m${value}\e[0m"
+    [[ "$value" =~ "INFO" ]] && value="\e[32m${value}\e[0m"
+    [[ "$value" =~ "Disabled" || "$value" =~ "SKIP" ]] && value="\e[33m${value}\e[0m"
     local content="$label $value"
     local plain_content=$(strip_colors "$content")
-    local padding=$((max_in - ${#plain_content}))
-
-    if [ $padding -lt 0 ]; then
-        printf "│ %b │\n" "${content:0:$max_in}"
-    else
-        printf "│ %b%*s │\n" "$content" "$padding" ""
-    fi
+    # Your original multiline wrap logic
+    while [ ${#plain_content} -gt 0 ]; do
+        local chunk_plain="${plain_content:0:$max_in}"
+        local padding=$((max_in - ${#chunk_plain}))
+        # We print the original content (with colors) for the first line, 
+        # but if we wrap, we use the plain chunk for subsequent lines
+        if [ ${#plain_content} -eq ${#content} ]; then
+            printf "│ %b%*s │\n" "$content" "$padding" ""
+        else
+            printf "│ %s%*s │\n" "$chunk_plain" "$padding" ""
+        fi
+        plain_content="${plain_content:$max_in}"
+        # Prevent infinite loop if logic fails
+        [[ -z "$plain_content" ]] && break
+    done
 }
+
 
 # End a box section
 # Usage: box_end [width]
