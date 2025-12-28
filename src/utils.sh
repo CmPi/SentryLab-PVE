@@ -367,54 +367,52 @@ box_line() {
     [[ ! "$width" =~ ^[0-9]+$ ]] && width=$BOX_WIDTH
     local max_in=$((width - 4))
 
-    # Define the literal Escape character for coloring
-    local ESC=$'\e'
-    local RED="${ESC}[31m"
-    local GRN="${ESC}[32m"
-    local YEL="${ESC}[33m"
-    local CLR="${ESC}[0m"
+    # Define the literal Escape characters
+    local E=$'\e'
+    local RED="${E}[31m"
+    local GRN="${E}[32m"
+    local YEL="${E}[33m"
+    local CLR="${E}[0m"
 
     local text=""
     
-    # 1. Logic for "Label: Value" vs "Plain Text"
+    # 1. Split and Color Logic
     if [[ "$input" == *": "* ]]; then
         local label="${input%%: *}: "
         local value="${input#*: }"
         
         if [[ "$value" == "ERROR"* ]]; then value="${RED}${value}${CLR}"
         elif [[ "$value" == "INFO"* ]]; then value="${GRN}${value}${CLR}"
-        elif [[ "$value" == "SKIP"* || "$value" =~ "Disabled" || "$value" =~ "Skipped" ]]; then 
-            value="${YEL}${value}${CLR}"
+        elif [[ "$value" == "SKIP"* || "$value" =~ "Disabled" ]]; then value="${YEL}${value}${CLR}"
         fi
         text="${label}${value}"
     else
         text="$input"
         if [[ "$text" == "ERROR"* ]]; then text="${RED}${text}${CLR}"
         elif [[ "$text" == "INFO"* ]]; then text="${GRN}${text}${CLR}"
-        elif [[ "$text" == "SKIP"* || "$text" =~ "Disabled" || "$text" =~ "Skipped" ]]; then 
-            text="${YEL}${text}${CLR}"
+        elif [[ "$text" == "SKIP"* || "$text" =~ "Disabled" ]]; then text="${YEL}${text}${CLR}"
         fi
     fi
 
-    # 2. Pure Bash Strip (Matches the literal Escape byte we just defined)
-    local plain_content="${text//[$ESC]\[[0-9;]*m/}"
+    # 2. Pure Bash Strip (Bulletproof)
+    local plain_content="${text//[$E]\[[0-9;]*m/}"
     local total_len=${#plain_content}
 
-    if [[ $total_len -eq 0 ]]; then
-        printf "│ %*s │\n" "$max_in" ""
-        return 0
-    fi
-
-    # 3. Multiline wrap logic
+    # 3. Multiline Wrap and Render
     while [[ ${#plain_content} -gt 0 ]]; do
         local chunk_plain="${plain_content:0:$max_in}"
         local padding=$((max_in - ${#chunk_plain}))
         
+        # Pre-calculate padding spaces so printf doesn't touch the color codes
+        local pad_str
+        pad_str=$(printf "%*s" "$padding" "")
+
         if [[ ${#plain_content} -eq $total_len ]]; then
-            # Using %b is crucial for interpreting backslashes if they remain
-            printf "│ %b%*s │\n" "$text" "$padding" ""
+            # Use echo -e for the colored line
+            echo -e "│ ${text}${pad_str} │"
         else
-            printf "│ %s%*s │\n" "$chunk_plain" "$padding" ""
+            # Use echo -e for consistency, though these lines are plain
+            echo -e "│ ${chunk_plain}${pad_str} │"
         fi
         
         plain_content="${plain_content:$max_in}"
