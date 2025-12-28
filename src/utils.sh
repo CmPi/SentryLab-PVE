@@ -56,7 +56,6 @@ load_config() {
             # shellcheck source=/dev/null
             source "$CONFIG_PATH"
             config_found=true
-            log_debug "Configuration loaded from: $CONFIG_PATH"
             break
         fi
     done
