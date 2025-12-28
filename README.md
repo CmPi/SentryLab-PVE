@@ -39,9 +39,9 @@ SentryLab-PVE/
 
 ## 🛠️ Installation & Setup Guide
 
-### 0. Dependencies and prerequesites
+### 0. Dependencies and Prerequisites
 
-#### Prerequesites
+#### Prerequisites
 
 * HomeAssitant
 * A MQTT Broker
@@ -55,10 +55,10 @@ In order to install SentryLab-PVE, ensure `git` is present on your Proxmox host:
 apt update && apt install git -y
 ```
 
-To actually use it, mosquito_pub and jq are required
+To actually use it, mosquitto_pub and jq are required
 
 ```bash
-apt update && apt install jq mosquito_pub -y
+apt update && apt install jq mosquitto_pub -y
 ```
 
 * **mosquitto_pub** for MQTT publication 
@@ -121,10 +121,8 @@ sudo nano /usr/local/etc/sentrylab.conf
 
 Key Parameters:
 
-MQTT_HOST: Your MQTT Broker IP.
-
+MQTT_HOST: Replace 192.168.x.x yb your MQTT Broker IP.
 MQTT_USER / MQTT_PASS: MQTT Credentials.
-
 HOST_NAME: The identifier for Home Assistant (e.g., albusnexus).
 
 ### 3. Manual Testing (Debug Mode)

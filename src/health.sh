@@ -47,7 +47,6 @@ for hw_path in /sys/class/hwmon/hwmon*; do
     fi
     
     # Récupérer le numéro de série depuis sysfs (sans réveiller)
-    # Récupérer le numéro de série depuis sysfs (sans réveiller)
     SN=$(cat "/sys/class/nvme/$nvme_dev/serial" 2>/dev/null | tr -d ' ')
     
     if [[ -z "$SN" ]]; then
@@ -76,8 +75,6 @@ for hw_path in /sys/class/hwmon/hwmon*; do
         continue
     fi
     
-    # Convertir en valeur binaire (0 = PASSED = OK = NO PROBLEM, 1 = FAILED = Problem)
-    VAL=$([[ "$ST" == "PASSED" ]] && echo 0 || echo 1)
     # Convertir en valeur binaire (0 = PASSED = OK = NO PROBLEM, 1 = FAILED = Problem)
     VAL=$([[ "$ST" == "PASSED" ]] && echo 0 || echo 1)
     

@@ -1,7 +1,7 @@
 #!/bin/bash
 
 #
-# @file /usr/local/bin/sentrylab-temp.sh
+# @file /usr/local/bin/sentrylab/temp.sh
 # @author CmPi <cmpi@webe.fr>
 # @brief Releve les températures CPU, NVMe et NAS ambient et les publie via MQTT
 # @date 2025-12-27

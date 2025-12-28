@@ -1,7 +1,7 @@
 #!/bin/bash
 
 #
-# @file /usr/local/bin/sentrylab-zfs.sh
+# @file /usr/local/bin/sentrylab/zfs.sh
 # @author CmPi <cmpi@webe.fr>
 # @brief Relève la santé et les métriques des pools ZFS et les publie via MQTT
 # @date 2025-12-27
