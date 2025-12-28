@@ -358,29 +358,31 @@ box_begin() {
 # Affiche une ligne stylisée avec gestion des couleurs et de l'alignement
 box_line() {
     [[ "${DEBUG:-false}" != "true" ]] && return 0
-    local label="$1"
-    local value="$2"
-    local width="${3:-$BOX_WIDTH}"
+    local text="$1"
+    local width="${2:-$BOX_WIDTH}"
     local max_in=$((width - 4))
-    # Semantic Colors
-    [[ "$value" =~ "ERROR" ]] && value="\e[31m${value}\e[0m"
-    [[ "$value" =~ "INFO" ]] && value="\e[32m${value}\e[0m"
-    [[ "$value" =~ "Disabled" || "$value" =~ "SKIP" ]] && value="\e[33m${value}\e[0m"
-    local content="$label $value"
-    local plain_content=$(strip_colors "$content")
+    # Semantic Colors - Apply directly to the text variable
+    if [[ "$text" == "ERROR:"* ]]; then
+        text="\e[31m${text}\e[0m"
+    elif [[ "$text" == "INFO:"* ]]; then
+        text="\e[32m${text}\e[0m"
+    elif [[ "$text" == "SKIP:"* ]] || [[ "$text" =~ "Disabled" ]] || [[ "$text" =~ "Skipped" ]]; then
+        text="\e[33m${text}\e[0m"
+    fi
+    local plain_content=$(strip_colors "$text")
     # Your original multiline wrap logic
     while [ ${#plain_content} -gt 0 ]; do
         local chunk_plain="${plain_content:0:$max_in}"
         local padding=$((max_in - ${#chunk_plain}))
-        # We print the original content (with colors) for the first line, 
-        # but if we wrap, we use the plain chunk for subsequent lines
-        if [ ${#plain_content} -eq ${#content} ]; then
-            printf "│ %b%*s │\n" "$content" "$padding" ""
+        # Check if we are on the first line to decide whether to print with colors
+        # Use the length of the current plain_content vs the total plain length
+        local current_plain_len=$(strip_colors "$text" | wc -c) # Total length for comparison
+        if [ ${#plain_content} -eq $((current_plain_len - 1)) ]; then
+            printf "│ %b%*s │\n" "$text" "$padding" ""
         else
             printf "│ %s%*s │\n" "$chunk_plain" "$padding" ""
         fi
         plain_content="${plain_content:$max_in}"
-        # Prevent infinite loop if logic fails
         [[ -z "$plain_content" ]] && break
     done
 }
