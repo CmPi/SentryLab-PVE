@@ -105,6 +105,7 @@ load_config
 # ==============================================================================
 
 BASE_TOPIC="proxmox/${HOST_NAME}"
+SYSTEM_TOPIC="$BASE_TOPIC/system"
 TEMP_TOPIC="$BASE_TOPIC/temp"
 WEAR_TOPIC="$BASE_TOPIC/wear"
 HEALTH_TOPIC="$BASE_TOPIC/health"
@@ -201,7 +202,7 @@ local csv_file="${1:-}"
     local arg3="${3:-}"  # Data (Utilise :- pour éviter unbound variable)
     local csv_content=""
     local warn=""
-    
+
     # 1. CAS : Désactivation totale (Tout est vide)
     # Si on n'a même pas de header, c'est que le module est bypassé
     if [[ -z "$arg2" && -z "$arg3" ]]; then
@@ -398,10 +399,11 @@ display_config() {
     echo
 
     box_begin "Monitoring Features"
-    box_line "ZFS Datasets:" "${PUSH_ZFS:-false}"
-    box_line "Temperature:" "${PUSH_TEMP:-false}"
+    box_line "System Monitoring:" "${PUSH_SYSTEM:-false}"
+    box_line "NVMe Temperature:" "${PUSH_NVME_TEMP:-false}"
     box_line "NVMe Wear:" "${PUSH_NVME_WEAR:-false}"
     box_line "NVMe Health:" "${PUSH_NVME_HEALTH:-false}"
+    box_line "ZFS Datasets:" "${PUSH_ZFS:-false}"
     box_line "Non-ZFS Disks:" "${PUSH_NON_ZFS:-false}"
     box_end
     echo

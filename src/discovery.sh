@@ -64,71 +64,127 @@ CSV_POOLS_HDR=""
 CSV_POOLS_DATA=""
 CSV_POOLS_HDR_ADDED=false
 
-# --- 1. Register CPU sensor ---
+# --- CSVs for IA dashboard generation ---
+CSV_SYSTEM_HDR=""
+CSV_SYSTEM_DATA=""
 
-# include hostname in HA ID (to avoid conflicts if other NAS or Workstations report their CPU temperature)
+if [[ "$PUSH_SYSTEM" == "true" ]]; then
 
-HA_ID="${HOST_NAME}_cpu_temp"
-HA_LABEL="Température du CPU"
-CFG_TOPIC="homeassistant/sensor/${HA_ID}/config"
-PAYLOAD=$(jq -n \
-    --arg name "$HA_LABEL" \
-    --arg unique_id "$HA_ID" \
-    --arg stat_t "$TEMP_TOPIC" \
-    --arg val_tpl '{{ value_json.cpu }}' \
-    --arg unit "°C" \
-    --arg icon "mdi:thermometer" \
-    --arg dev_cla "temperature" \
-    --arg availability "$AVAIL_TOPIC" \
-    --argjson dev "$DEVICE_JSON" \
-    '{
-        name: $name,
-        unique_id: $unique_id,
-        object_id: $unique_id,
-        state_topic: $stat_t,
-        value_template: $val_tpl,
-        unit_of_measurement: $unit,
-        icon: $icon,
-        device_class: $dev_cla,
-        availability_topic: $availability,        
-        dev: $dev
-    }'
-)
-mqtt_publish_retain "$CFG_TOPIC" "$PAYLOAD"
-CSV_LINES+="${HOST_NAME}_${HA_ID},temperature,\"${HA_LABEL}\",unknown,N/A"$'\n'
+    box_begin "System Sensors Discovery"
 
-# --- 2. Register Chassis temperature sensor ---
+    CSV_SYSTEM_HDR="HomeAssistant entity ID,Metric name in english,Metric name in french"
 
-# include hostname in HA ID (to avoid conflicts if other NAS or Workstations report their CPU temperature)
+    # --- 1. Register CPU sensor ---
 
-HA_ID="${HOST_NAME}_chassis_temp"
-HA_LABEL="Température du chassis"
-CFG_TOPIC="homeassistant/sensor/${HA_ID}/config"
-PAYLOAD=$(jq -n \
-    --arg name "$HA_LABEL" \
-    --arg unique_id "$HA_ID" \
-    --arg stat_t "$TEMP_TOPIC" \
-    --arg val_tpl '{{ value_json.chassis }}' \
-    --arg unit "°C" \
-    --arg icon "mdi:thermometer" \
-    --arg dev_cla "temperature" \
-    --arg av_t "$AVAIL_TOPIC" \
-    --argjson dev "$DEVICE_JSON" \
-    '{
-        name: $name,
-        unique_id: $unique_id,
-        object_id: $unique_id,
-        state_topic: $stat_t,
-        value_template: $val_tpl,
-        unit_of_measurement: $unit,
-        icon: $icon,
-        device_class: $dev_cla,
-        availability_topic: $av_t,        
-        dev: $dev
-    }'
-)
-mqtt_publish_retain "$CFG_TOPIC" "$PAYLOAD"
-CSV_LINES+="${HOST_NAME}_${HA_ID},temperature,\"${HA_LABEL}\",unknown,N/A"$'\n'
+    # include hostname in HA ID (to avoid conflicts if other NAS or Workstations report their CPU temperature)
+
+    HA_ID="${HOST_NAME}_cpu_temp"
+    HA_LABEL="Température du CPU"
+    CFG_TOPIC="homeassistant/sensor/${HA_ID}/config"
+    PAYLOAD=$(jq -n \
+        --arg name "$HA_LABEL" \
+        --arg unique_id "$HA_ID" \
+        --arg stat_t "$SYSTEM_TOPIC" \
+        --arg val_tpl '{{ value_json.cpu }}' \
+        --arg unit "°C" \
+        --arg icon "mdi:thermometer" \
+        --arg dev_cla "temperature" \
+        --arg availability "$AVAIL_TOPIC" \
+        --argjson dev "$DEVICE_JSON" \
+        '{
+            name: $name,
+            unique_id: $unique_id,
+            object_id: $unique_id,
+            state_topic: $stat_t,
+            value_template: $val_tpl,
+            unit_of_measurement: $unit,
+            icon: $icon,
+            device_class: $dev_cla,
+            availability_topic: $availability,        
+            dev: $dev
+        }'
+    )
+    mqtt_publish_retain "$CFG_TOPIC" "$PAYLOAD"
+    CSV_SYSTEM_DATA+="${HA_ID},CPU temperature,Température du CPU"$'\n'
+    box_line "CPU temperature registered"
+
+    # --- 2. Register Chassis temperature sensor (not CPU related, I know) ---
+
+    # include hostname in HA ID (to avoid conflicts if other NAS or Workstations report their CPU temperature)
+
+    HA_ID="${HOST_NAME}_chassis_temp"
+    HA_LABEL="Température du chassis"
+    CFG_TOPIC="homeassistant/sensor/${HA_ID}/config"
+    PAYLOAD=$(jq -n \
+        --arg name "$HA_LABEL" \
+        --arg unique_id "$HA_ID" \
+        --arg stat_t "$SYSTEM_TOPIC" \
+        --arg val_tpl '{{ value_json.chassis }}' \
+        --arg unit "°C" \
+        --arg icon "mdi:thermometer" \
+        --arg dev_cla "temperature" \
+        --arg av_t "$AVAIL_TOPIC" \
+        --argjson dev "$DEVICE_JSON" \
+        '{
+            name: $name,
+            unique_id: $unique_id,
+            object_id: $unique_id,
+            state_topic: $stat_t,
+            value_template: $val_tpl,
+            unit_of_measurement: $unit,
+            icon: $icon,
+            device_class: $dev_cla,
+            availability_topic: $av_t,        
+            dev: $dev
+        }'
+    )
+    mqtt_publish_retain "$CFG_TOPIC" "$PAYLOAD"
+    CSV_SYSTEM_DATA+="${HA_ID},Chassis temperature,Température du chassis"$'\n'
+    box_line "Chassis temperature registered"
+
+    # --- CPU Cores (Static) ---
+    if command -v nproc >/dev/null; then
+        CPU_CORES=$(nproc)
+        HA_ID="${HOST_NAME}_cpu_cores"
+        HA_LABEL="Nombre de Coeurs CPU"
+        CFG_TOPIC="homeassistant/sensor/${HA_ID}/config"
+        PAYLOAD=$(jq -n \
+            --arg name "$HA_LABEL" \
+            --arg unique_id "$HA_ID" \
+            --arg stat_t "$SYSTEM_TOPIC" \
+            --arg val_tpl '{{ value_json.cpu_cores }}' \
+            --arg icon "mdi:cpu-64-bit" \
+            --arg av_t "$AVAIL_TOPIC" \
+            --argjson dev "$DEVICE_JSON" \
+            '{name: $name, unique_id: $unique_id, object_id: $unique_id, state_topic: $stat_t, value_template: $val_tpl, icon: $icon, availability_topic: $av_t, dev: $dev}')
+        mqtt_publish_retain "$CFG_TOPIC" "$PAYLOAD"
+        CSV_SYSTEM_DATA+="${HA_ID},Cores,Nombre de Coeurs CPU"$'\n'
+        box_line "CPU Cores registered ($CPU_CORES)"
+    fi
+
+    # --- CPU Load Average (5 min) ---
+    if [[ -f /proc/loadavg ]]; then
+        HA_ID="${HOST_NAME}_cpu_load_5m"
+        HA_LABEL="Charge CPU (5 min)"
+        CFG_TOPIC="homeassistant/sensor/${HA_ID}/config"
+        PAYLOAD=$(jq -n \
+            --arg name "$HA_LABEL" \
+            --arg unique_id "$HA_ID" \
+            --arg stat_t "$SYSTEM_TOPIC" \
+            --arg val_tpl '{{ value_json.cpu_load_5m }}' \
+            --arg icon "mdi:speedometer-medium" \
+            --arg av_t "$AVAIL_TOPIC" \
+            --argjson dev "$DEVICE_JSON" \
+            '{name: $name, unique_id: $unique_id, object_id: $unique_id, state_topic: $stat_t, value_template: $val_tpl, icon: $icon, availability_topic: $av_t, dev: $dev}')
+        
+        mqtt_publish_retain "$CFG_TOPIC" "$PAYLOAD"
+        CSV_SYSTEM_DATA+="${HA_ID},Load (5m),Charge CPU (5 min)"$'\n'
+        box_line "CPU Load (5mn): Registered"
+    fi
+
+    box_end
+
+fi
 
 # --- 3. Register NVMe sensors for Home Assistant discovery ---
 
@@ -152,84 +208,17 @@ for hw_path in /sys/class/hwmon/hwmon*; do
     MODEL=$(cat "/sys/class/nvme/$nvme_dev/model" 2>/dev/null | tr -d ' ' || echo "NVMe")
     log_debug "Processing NVMe: $MODEL ($SN)"
 
-    # --- Wear sensor ---
-    HA_ID="nvme_${SN_LOWER}_wear"
-    HA_LABEL="Usure du SSD ${SN}"
-    CFG_TOPIC="homeassistant/sensor/${HA_ID}/config"      # pour temperature
-    PAYLOAD=$(jq -n \
-        --arg name "$HA_LABEL" \
-        --arg unique_id "$HA_ID" \
-        --arg stat_t "$WEAR_TOPIC" \
-        --arg val_tpl "{{ value_json.nvme_${SN_LOWER} }}" \
-        --arg av_t "$AVAIL_TOPIC" \
-        --argjson dev "$DEVICE_JSON" \
-        '{
-            name: $name,
-            unique_id: $unique_id,
-            object_id: $unique_id,
-            state_topic: $stat_t,
-            value_template: $val_tpl,
-            unit_of_measurement: "%",
-            icon: "mdi:gauge",
-            availability_topic: $av_t,        
-            dev: $dev
-        }'
-    )
-    mqtt_publish_retain "$CFG_TOPIC" "$PAYLOAD"
-    CSV_LINES+="${HOST_NAME}_${HA_ID},Wear,\"${HA_LABEL}\",${SN},${NVME_SLOT_ID}"$'\n'
+    if [[ "$PUSH_NVME_WEAR" == "true" ]]; then
 
-    # --- Health binary sensor ---
-    HA_ID="nvme_${SN_LOWER}_health"
-    HA_LABEL="Santé du SSD ${SN} (slot ${NVME_SLOT_ID})"
-    CFG_TOPIC="homeassistant/binary_sensor/${HA_ID}/config" 
-    PAYLOAD=$(jq -n \
-        --arg name "$HA_LABEL" \
-        --arg unique_id "$HA_ID" \
-        --arg stat_t "$HEALTH_TOPIC" \
-        --arg val_tpl "{{ value_json.nvme_${SN_LOWER} }}" \
-        --arg av_t "$AVAIL_TOPIC" \
-        --argjson dev "$DEVICE_JSON" \
-        '{
-            name: $name,
-            unique_id: $unique_id,
-            object_id: $unique_id,
-            state_topic: $stat_t,
-            value_template: $val_tpl,
-            payload_on: "1",      
-            payload_off: "0",
-            device_class: "problem",
-            availability_topic: $av_t,        
-            icon: "mdi:heart-pulse",
-            dev: $dev
-        }'
-    )
-    mqtt_publish_retain "$CFG_TOPIC" "$PAYLOAD"
-    CSV_LINES+="${HOST_NAME}_${HA_ID},Health,\"${HA_LABEL}\",${SN},${NVME_SLOT_ID}"$'\n'
-
-    # --- Temperature sensors ---
-    for t_file in "$hw_path"/temp*_input; do
-        [[ -f "$t_file" ]] || continue
-        temp_num=$(basename "$t_file" | sed 's/temp\([0-9]*\)_input/\1/')
-        label_file="${t_file%_input}_label"
-        if [[ -f "$label_file" ]]; then
-            label=$(cat "$label_file" | tr '[:upper:]' '[:lower:]' | tr ' ' '_')
-        else
-            case $temp_num in
-                1) label="composite" ;;
-                2) label="sensor1" ;;
-                3) label="sensor2" ;;
-                *) label="sensor$temp_num" ;;
-            esac
-        fi
-        label_display=$(echo "$label" | sed 's/_/ /g' | sed 's/\b\(.\)/\u\1/g')
-        HA_ID="nvme_${SN_LOWER}_${label}"
-        HA_LABEL="Température ${label_display} du SSD ${SN}"
-        CFG_TOPIC="homeassistant/sensor/${HA_ID}/config" 
+        # --- Wear sensor ---
+        HA_ID="nvme_${SN_LOWER}_wear"
+        HA_LABEL="Usure du SSD ${SN}"
+        CFG_TOPIC="homeassistant/sensor/${HA_ID}/config"      # pour temperature
         PAYLOAD=$(jq -n \
             --arg name "$HA_LABEL" \
             --arg unique_id "$HA_ID" \
-            --arg stat_t "$TEMP_TOPIC" \
-            --arg val_tpl "{{ value_json.nvme_${SN_LOWER}_${label} }}" \
+            --arg stat_t "$WEAR_TOPIC" \
+            --arg val_tpl "{{ value_json.nvme_${SN_LOWER} }}" \
             --arg av_t "$AVAIL_TOPIC" \
             --argjson dev "$DEVICE_JSON" \
             '{
@@ -238,225 +227,312 @@ for hw_path in /sys/class/hwmon/hwmon*; do
                 object_id: $unique_id,
                 state_topic: $stat_t,
                 value_template: $val_tpl,
-                unit_of_measurement: "°C",
-                device_class: "temperature",
+                unit_of_measurement: "%",
+                icon: "mdi:gauge",
                 availability_topic: $av_t,        
-                icon: "mdi:thermometer",
                 dev: $dev
             }'
         )
         mqtt_publish_retain "$CFG_TOPIC" "$PAYLOAD"
-        CSV_LINES+="${HOST_NAME}_${HA_ID},${label},\"${HA_LABEL}\",${SN},${NVME_SLOT_ID}"$'\n'
-        log_debug "  Registered NVMe temperature sensor: $label"
-    done
+        CSV_LINES+="${HOST_NAME}_${HA_ID},Wear,\"${HA_LABEL}\",${SN},${NVME_SLOT_ID}"$'\n'
+
+    fi
+
+    if [[ "$PUSH_NVME_HEALTH" == "true" ]]; then
+        # --- Health binary sensor ---
+        HA_ID="nvme_${SN_LOWER}_health"
+        HA_LABEL="Santé du SSD ${SN} (slot ${NVME_SLOT_ID})"
+        CFG_TOPIC="homeassistant/binary_sensor/${HA_ID}/config" 
+        PAYLOAD=$(jq -n \
+            --arg name "$HA_LABEL" \
+            --arg unique_id "$HA_ID" \
+            --arg stat_t "$HEALTH_TOPIC" \
+            --arg val_tpl "{{ value_json.nvme_${SN_LOWER} }}" \
+            --arg av_t "$AVAIL_TOPIC" \
+            --argjson dev "$DEVICE_JSON" \
+            '{
+                name: $name,
+                unique_id: $unique_id,
+                object_id: $unique_id,
+                state_topic: $stat_t,
+                value_template: $val_tpl,
+                payload_on: "1",      
+                payload_off: "0",
+                device_class: "problem",
+                availability_topic: $av_t,        
+                icon: "mdi:heart-pulse",
+                dev: $dev
+            }'
+        )
+        mqtt_publish_retain "$CFG_TOPIC" "$PAYLOAD"
+        CSV_LINES+="${HOST_NAME}_${HA_ID},Health,\"${HA_LABEL}\",${SN},${NVME_SLOT_ID}"$'\n'
+    fi
+
+    if [[ "$PUSH_TEMP" == "true" ]]; then
+        # --- Temperature sensors ---
+        for t_file in "$hw_path"/temp*_input; do
+            [[ -f "$t_file" ]] || continue
+            temp_num=$(basename "$t_file" | sed 's/temp\([0-9]*\)_input/\1/')
+            label_file="${t_file%_input}_label"
+            if [[ -f "$label_file" ]]; then
+                label=$(cat "$label_file" | tr '[:upper:]' '[:lower:]' | tr ' ' '_')
+            else
+                case $temp_num in
+                    1) label="composite" ;;
+                    2) label="sensor1" ;;
+                    3) label="sensor2" ;;
+                    *) label="sensor$temp_num" ;;
+                esac
+            fi
+            label_display=$(echo "$label" | sed 's/_/ /g' | sed 's/\b\(.\)/\u\1/g')
+            HA_ID="nvme_${SN_LOWER}_${label}"
+            HA_LABEL="Température ${label_display} du SSD ${SN}"
+            CFG_TOPIC="homeassistant/sensor/${HA_ID}/config" 
+            PAYLOAD=$(jq -n \
+                --arg name "$HA_LABEL" \
+                --arg unique_id "$HA_ID" \
+                --arg stat_t "$TEMP_TOPIC" \
+                --arg val_tpl "{{ value_json.nvme_${SN_LOWER}_${label} }}" \
+                --arg av_t "$AVAIL_TOPIC" \
+                --argjson dev "$DEVICE_JSON" \
+                '{
+                    name: $name,
+                    unique_id: $unique_id,
+                    object_id: $unique_id,
+                    state_topic: $stat_t,
+                    value_template: $val_tpl,
+                    unit_of_measurement: "°C",
+                    device_class: "temperature",
+                    availability_topic: $av_t,        
+                    icon: "mdi:thermometer",
+                    dev: $dev
+                }'
+            )
+            mqtt_publish_retain "$CFG_TOPIC" "$PAYLOAD"
+            CSV_LINES+="${HOST_NAME}_${HA_ID},${label},\"${HA_LABEL}\",${SN},${NVME_SLOT_ID}"$'\n'
+            log_debug "  Registered NVMe temperature sensor: $label"
+        done
+
+    fi
+
 done
 
 # --- ZFS pools discovery ---
-POOLS=$(zpool list -H -o name 2>/dev/null || true)
 
-log_debug "-- Pools ZFS ${POOLS}"
+if [[ "$PUSH_ZFS" == "true" ]]; then
 
-for pool in $POOLS; do
-    POOL_NORM=$(echo "$pool" | tr '-' '_' | tr '[:upper:]' '[:lower:]')
+    log_box_begin "-- Pools ZFS ${POOLS}"
 
-    log_debug "Registering ZFS pools: $pool"
+    POOLS=$(zpool list -H -o name 2>/dev/null || true)
 
-    # --- Health (sensor) ---
-    HA_ID="${HOST_NAME}_zfs_${POOL_NORM}_status"
-    HA_LABEL="Statut du pool ${pool}"
-    CFG_TOPIC="homeassistant/sensor/${HA_ID}/config"
-    PAYLOAD=$(jq -n \
-        --arg name "$HA_LABEL" \
-        --arg unique_id "$HA_ID" \
-        --arg stat_t "$ZFS_TOPIC" \
-        --arg val_tpl "{{ value_json.${POOL_NORM}_health }}" \
-        --arg av_t "$AVAIL_TOPIC" \
-        --argjson dev "$DEVICE_JSON" \
-        '{
-            name: $name,
-            unique_id: $unique_id,
-            object_id: $unique_id,
-            state_topic: $stat_t,
-            value_template: $val_tpl,
-            availability_topic: $av_t,        
-            icon: "mdi:database",
-            dev: $dev
-        }'
-    )
-    mqtt_publish_retain "$CFG_TOPIC" "$PAYLOAD"
-    if [ "$CSV_POOLS_HDR_ADDED" = false ]; then
-        CSV_POOLS_HDR+="Pool name"
-    fi   
-    CSV_POOLS_DATA+="\"${pool}\""
+    for pool in $POOLS; do
+        POOL_NORM=$(echo "$pool" | tr '-' '_' | tr '[:upper:]' '[:lower:]')
 
-    # --- Health status (binary sensor) ---
-    HA_ID="${HOST_NAME}_zfs_${POOL_NORM}_health"
-    HA_LABEL="Santé du pool ${pool}"
-    CFG_TOPIC="homeassistant/binary_sensor/${HA_ID}/config"
-    PAYLOAD=$(jq -n \
-        --arg name "$HA_LABEL" \
-        --arg unique_id "$HA_ID" \
-        --arg stat_t "$ZFS_TOPIC" \
-        --arg val_tpl "{{ '0' if value_json.get('${POOL_NORM}_health') == 'ONLINE' else '1' }}" \
-        --arg av_t "$AVAIL_TOPIC" \
-        --argjson dev "$DEVICE_JSON" \
-        '{
-            name: $name,
-            unique_id: $unique_id,
-            object_id: $unique_id,
-            payload_on: "1",      
-            payload_off: "0",
-            state_topic: $stat_t,
-            value_template: $val_tpl,
-            device_class: "problem",
-            availability_topic: $av_t,        
-            icon: "mdi:database-check",
-            dev: $dev
-        }'
-    )
-    mqtt_publish_retain "$CFG_TOPIC" "$PAYLOAD"
-    if [ "$CSV_POOLS_HDR_ADDED" = false ]; then
-        CSV_POOLS_HDR+=",Pool health ID"
-    fi   
-    CSV_POOLS_DATA+=",${HA_ID}"
+        log_debug "Registering ZFS pools: $pool"
 
-    # --- Usage percent ---
-    HA_ID="${HOST_NAME}_zfs_${POOL_NORM}_usage"
-    HA_LABEL="Utilisation du pool ${pool}"
-    CFG_TOPIC="homeassistant/sensor/${HA_ID}/config"
-    PAYLOAD=$(jq -n \
-        --arg name "$HA_LABEL" \
-        --arg unique_id "$HA_ID" \
-        --arg stat_t "$ZFS_TOPIC" \
-        --arg val_tpl "{{ value_json.${POOL_NORM}_usage_percent }}" \
-        --arg av_t "$AVAIL_TOPIC" \
-        --argjson dev "$DEVICE_JSON" \
-        '{
-            name: $name,
-            unique_id: $unique_id,
-            object_id: $unique_id,
-            state_topic: $stat_t,
-            value_template: $val_tpl,
-            unit_of_measurement: "%",
-            icon: "mdi:chart-donut",
-            availability_topic: $av_t,        
-            dev: $dev
-        }'
-    )
-    mqtt_publish_retain "$CFG_TOPIC" "$PAYLOAD"
-    if [ "$CSV_POOLS_HDR_ADDED" = false ]; then
-        CSV_POOLS_HDR+=",Pool usage ID"
-    fi   
-    CSV_POOLS_DATA+=",${HA_ID}"
+        # --- Health (sensor) ---
+        HA_ID="${HOST_NAME}_zfs_${POOL_NORM}_status"
+        HA_LABEL="Statut du pool ${pool}"
+        CFG_TOPIC="homeassistant/sensor/${HA_ID}/config"
+        PAYLOAD=$(jq -n \
+            --arg name "$HA_LABEL" \
+            --arg unique_id "$HA_ID" \
+            --arg stat_t "$ZFS_TOPIC" \
+            --arg val_tpl "{{ value_json.${POOL_NORM}_health }}" \
+            --arg av_t "$AVAIL_TOPIC" \
+            --argjson dev "$DEVICE_JSON" \
+            '{
+                name: $name,
+                unique_id: $unique_id,
+                object_id: $unique_id,
+                state_topic: $stat_t,
+                value_template: $val_tpl,
+                availability_topic: $av_t,        
+                icon: "mdi:database",
+                dev: $dev
+            }'
+        )
+        mqtt_publish_retain "$CFG_TOPIC" "$PAYLOAD"
+        if [ "$CSV_POOLS_HDR_ADDED" = false ]; then
+            CSV_POOLS_HDR+="Pool name"
+        fi   
+        CSV_POOLS_DATA+="\"${pool}\""
 
-    # --- Free space ---
+        # --- Health status (binary sensor) ---
+        HA_ID="${HOST_NAME}_zfs_${POOL_NORM}_health"
+        HA_LABEL="Santé du pool ${pool}"
+        CFG_TOPIC="homeassistant/binary_sensor/${HA_ID}/config"
+        PAYLOAD=$(jq -n \
+            --arg name "$HA_LABEL" \
+            --arg unique_id "$HA_ID" \
+            --arg stat_t "$ZFS_TOPIC" \
+            --arg val_tpl "{{ '0' if value_json.get('${POOL_NORM}_health') == 'ONLINE' else '1' }}" \
+            --arg av_t "$AVAIL_TOPIC" \
+            --argjson dev "$DEVICE_JSON" \
+            '{
+                name: $name,
+                unique_id: $unique_id,
+                object_id: $unique_id,
+                payload_on: "1",      
+                payload_off: "0",
+                state_topic: $stat_t,
+                value_template: $val_tpl,
+                device_class: "problem",
+                availability_topic: $av_t,        
+                icon: "mdi:database-check",
+                dev: $dev
+            }'
+        )
+        mqtt_publish_retain "$CFG_TOPIC" "$PAYLOAD"
+        if [ "$CSV_POOLS_HDR_ADDED" = false ]; then
+            CSV_POOLS_HDR+=",Pool health ID"
+        fi   
+        CSV_POOLS_DATA+=",${HA_ID}"
 
-    HA_ID="${HOST_NAME}_zfs_${POOL_NORM}_free_bytes"
-    HA_LABEL="Espace libre du pool ${pool}"
-    CFG_TOPIC="homeassistant/sensor/${HA_ID}/config"   
-    PAYLOAD=$(jq -n \
-        --arg name "$HA_LABEL" \
-        --arg unique_id "$HA_ID" \
-        --arg stat_t "$ZFS_TOPIC" \
-        --arg val_tpl "{{ value_json.${POOL_NORM}_free_bytes }}" \
-        --arg av_t "$AVAIL_TOPIC" \
-        --argjson dev "$DEVICE_JSON" \
-        '{
-            name: $name,
-            unique_id: $unique_id,
-            object_id: $unique_id,
-            state_topic: $stat_t,
-            value_template: $val_tpl,
-            device_class: "data_size",
-            state_class: "measurement",
-            unit_of_measurement: "B",
-            availability_topic: $av_t,        
-            icon: "mdi:database-minus",
-            dev: $dev
-        }'
-    )
-    mqtt_publish_retain "$CFG_TOPIC" "$PAYLOAD"
-    if [ "$CSV_POOLS_HDR_ADDED" = false ]; then
-        CSV_POOLS_HDR+=",Free space ID"
-    fi   
-    CSV_POOLS_DATA+=",${HA_ID}"
+        # --- Usage percent ---
+        HA_ID="${HOST_NAME}_zfs_${POOL_NORM}_usage"
+        HA_LABEL="Utilisation du pool ${pool}"
+        CFG_TOPIC="homeassistant/sensor/${HA_ID}/config"
+        PAYLOAD=$(jq -n \
+            --arg name "$HA_LABEL" \
+            --arg unique_id "$HA_ID" \
+            --arg stat_t "$ZFS_TOPIC" \
+            --arg val_tpl "{{ value_json.${POOL_NORM}_usage_percent }}" \
+            --arg av_t "$AVAIL_TOPIC" \
+            --argjson dev "$DEVICE_JSON" \
+            '{
+                name: $name,
+                unique_id: $unique_id,
+                object_id: $unique_id,
+                state_topic: $stat_t,
+                value_template: $val_tpl,
+                unit_of_measurement: "%",
+                icon: "mdi:chart-donut",
+                availability_topic: $av_t,        
+                dev: $dev
+            }'
+        )
+        mqtt_publish_retain "$CFG_TOPIC" "$PAYLOAD"
+        if [ "$CSV_POOLS_HDR_ADDED" = false ]; then
+            CSV_POOLS_HDR+=",Pool usage ID"
+        fi   
+        CSV_POOLS_DATA+=",${HA_ID}"
 
-    # --- Total size ---
-    HA_ID="${HOST_NAME}_zfs_${POOL_NORM}_size_bytes"
-    HA_LABEL="Taille du pool ${pool}"
-    CFG_TOPIC="homeassistant/sensor/${HA_ID}/config"
-    PAYLOAD=$(jq -n \
-        --arg name "$HA_LABEL" \
-        --arg unique_id "$HA_ID" \
-        --arg stat_t "$ZFS_TOPIC" \
-        --arg val_tpl "{{ value_json.${POOL_NORM}_size_bytes }}" \
-        --arg av_t "$AVAIL_TOPIC" \
-        --argjson dev "$DEVICE_JSON" \
-        '{
-            name: $name,
-            unique_id: $unique_id,
-            object_id: $unique_id,
-            state_topic: $stat_t,
-            value_template: $val_tpl,
-            device_class: "data_size",
-            state_class: "measurement",
-            unit_of_measurement: "B",
-            availability_topic: $av_t,        
-            icon: "mdi:database",
-            dev: $dev
-        }'
-    )
-    mqtt_publish_retain "$CFG_TOPIC" "$PAYLOAD"
-    if [ "$CSV_POOLS_HDR_ADDED" = false ]; then
-        CSV_POOLS_HDR+=",Total size ID"
-    fi   
-    CSV_POOLS_DATA+=",${HA_ID}"
+        # --- Free space ---
 
-    # --- Allocated space ---
-    HA_ID="${HOST_NAME}_zfs_${POOL_NORM}_allocated_bytes"
-    HA_LABEL="Espace alloué du pool ${pool}"
-    CFG_TOPIC="homeassistant/sensor/${HA_ID}/config"
-    PAYLOAD=$(jq -n \
-        --arg name "$HA_LABEL" \
-        --arg unique_id "$HA_ID" \
-        --arg stat_t "$ZFS_TOPIC" \
-        --arg val_tpl "{{ value_json.${POOL_NORM}_allocated_bytes }}" \
-        --arg av_t "$AVAIL_TOPIC" \
-        --argjson dev "$DEVICE_JSON" \
-        '{
-            name: $name,
-            unique_id: $unique_id,
-            object_id: $unique_id,
-            state_topic: $stat_t,
-            value_template: $val_tpl,
-            unit_of_measurement: "B",
-            device_class: "data_size",
-            state_class: "measurement",
-            availability_topic: $av_t,        
-            icon: "mdi:database-import",
-            dev: $dev
-        }'
-    )
-    mqtt_publish_retain "$CFG_TOPIC" "$PAYLOAD"
-    if [ "$CSV_POOLS_HDR_ADDED" = false ]; then
-        CSV_POOLS_HDR+=",Allocated space ID"
-    fi   
-    CSV_POOLS_DATA+=",${HA_ID}"
+        HA_ID="${HOST_NAME}_zfs_${POOL_NORM}_free_bytes"
+        HA_LABEL="Espace libre du pool ${pool}"
+        CFG_TOPIC="homeassistant/sensor/${HA_ID}/config"   
+        PAYLOAD=$(jq -n \
+            --arg name "$HA_LABEL" \
+            --arg unique_id "$HA_ID" \
+            --arg stat_t "$ZFS_TOPIC" \
+            --arg val_tpl "{{ value_json.${POOL_NORM}_free_bytes }}" \
+            --arg av_t "$AVAIL_TOPIC" \
+            --argjson dev "$DEVICE_JSON" \
+            '{
+                name: $name,
+                unique_id: $unique_id,
+                object_id: $unique_id,
+                state_topic: $stat_t,
+                value_template: $val_tpl,
+                device_class: "data_size",
+                state_class: "measurement",
+                unit_of_measurement: "B",
+                availability_topic: $av_t,        
+                icon: "mdi:database-minus",
+                dev: $dev
+            }'
+        )
+        mqtt_publish_retain "$CFG_TOPIC" "$PAYLOAD"
+        if [ "$CSV_POOLS_HDR_ADDED" = false ]; then
+            CSV_POOLS_HDR+=",Free space ID"
+        fi   
+        CSV_POOLS_DATA+=",${HA_ID}"
+
+        # --- Total size ---
+        HA_ID="${HOST_NAME}_zfs_${POOL_NORM}_size_bytes"
+        HA_LABEL="Taille du pool ${pool}"
+        CFG_TOPIC="homeassistant/sensor/${HA_ID}/config"
+        PAYLOAD=$(jq -n \
+            --arg name "$HA_LABEL" \
+            --arg unique_id "$HA_ID" \
+            --arg stat_t "$ZFS_TOPIC" \
+            --arg val_tpl "{{ value_json.${POOL_NORM}_size_bytes }}" \
+            --arg av_t "$AVAIL_TOPIC" \
+            --argjson dev "$DEVICE_JSON" \
+            '{
+                name: $name,
+                unique_id: $unique_id,
+                object_id: $unique_id,
+                state_topic: $stat_t,
+                value_template: $val_tpl,
+                device_class: "data_size",
+                state_class: "measurement",
+                unit_of_measurement: "B",
+                availability_topic: $av_t,        
+                icon: "mdi:database",
+                dev: $dev
+            }'
+        )
+        mqtt_publish_retain "$CFG_TOPIC" "$PAYLOAD"
+        if [ "$CSV_POOLS_HDR_ADDED" = false ]; then
+            CSV_POOLS_HDR+=",Total size ID"
+        fi   
+        CSV_POOLS_DATA+=",${HA_ID}"
+
+        # --- Allocated space ---
+        HA_ID="${HOST_NAME}_zfs_${POOL_NORM}_allocated_bytes"
+        HA_LABEL="Espace alloué du pool ${pool}"
+        CFG_TOPIC="homeassistant/sensor/${HA_ID}/config"
+        PAYLOAD=$(jq -n \
+            --arg name "$HA_LABEL" \
+            --arg unique_id "$HA_ID" \
+            --arg stat_t "$ZFS_TOPIC" \
+            --arg val_tpl "{{ value_json.${POOL_NORM}_allocated_bytes }}" \
+            --arg av_t "$AVAIL_TOPIC" \
+            --argjson dev "$DEVICE_JSON" \
+            '{
+                name: $name,
+                unique_id: $unique_id,
+                object_id: $unique_id,
+                state_topic: $stat_t,
+                value_template: $val_tpl,
+                unit_of_measurement: "B",
+                device_class: "data_size",
+                state_class: "measurement",
+                availability_topic: $av_t,        
+                icon: "mdi:database-import",
+                dev: $dev
+            }'
+        )
+        mqtt_publish_retain "$CFG_TOPIC" "$PAYLOAD"
+        if [ "$CSV_POOLS_HDR_ADDED" = false ]; then
+            CSV_POOLS_HDR+=",Allocated space ID"
+        fi   
+        CSV_POOLS_DATA+=",${HA_ID}"
 
 
-    # Row finalization
-    CSV_POOLS_DATA+=$'\n'    
+        # Row finalization
+        CSV_POOLS_DATA+=$'\n'    
 
-    # Header record finalization
-    if [ "$CSV_POOLS_HDR_ADDED" = false ]; then
-        CSV_POOLS_HDR+=$'\n'    
-        CSV_POOLS_HDR_ADDED=true
-    fi   
+        # Header record finalization
+        if [ "$CSV_POOLS_HDR_ADDED" = false ]; then
+            CSV_POOLS_HDR+=$'\n'    
+            CSV_POOLS_HDR_ADDED=true
+        fi   
 
-done
+    done
+
+    box_end
+
+fi
+
 
 # --- 4. Processing: Non-ZFS Disks ---
+
 if [[ "$PUSH_NON_ZFS" == "true" ]]; then
+
     box_begin "Standard Partitions Discovery"
 
     CSV_DISKS_HDR="Mountpoint,FSType,Free_Space_ID,Total_Size_ID"
@@ -488,8 +564,8 @@ if [[ "$PUSH_NON_ZFS" == "true" ]]; then
 
     done < <(df -x tmpfs -x devtmpfs -x zfs --output=target,fstype | tail -n +2)
 
-    # Export final
-    echo -e "$CSV_DISKS_HDR$CSV_DISKS_DATA" > "/tmp/${HOST_NAME}_standard_disks.csv"
+    box_end
+
 fi
 
 # On confirme la disponibilité du NAS
