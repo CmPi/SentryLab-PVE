@@ -457,23 +457,39 @@ done
 
 # --- 4. Processing: Non-ZFS Disks ---
 if [[ "$PUSH_NON_ZFS" == "true" ]]; then
-    log_debug "Discovering standard partitions..."
-    # We exclude tmpfs, devtmpfs, and zfs to focus on physical local storage
-    df -x tmpfs -x devtmpfs -x zfs --output=target,fstype | tail -n +2 | while read -r target fstype; do
-        # Create a clean ID: / becomes root, /boot becomes boot
+    box_begin "Standard Partitions Discovery"
+
+    CSV_DISKS_HDR="Mountpoint,FSType,Free_Space_ID,Total_Size_ID"
+    CSV_DISKS_DATA=""
+
+    while read -r target fstype; do
+        # ID normalisé
         DISK_ID=$(echo "$target" | tr '/' '_' | sed 's/^_//;s/^$/root/')
-        HA_ID="${HOST_NAME}_disk_${DISK_ID}_usage"
         
-        # Merge specific disk info into BASE_CONFIG
-        PAYLOAD=$(echo "$BASE_CONFIG" | jq \
-            --arg n "Disk Usage: $target ($fstype)" \
-            --arg id "$HA_ID" \
-            --arg st "$DISK_TOPIC" \
-            --arg v "value_json.${DISK_ID}_usage" \
-            '. + {name: $n, unique_id: $id, object_id: $id, state_topic: $st, value_template: ("{{ " + $v + " }}"), unit_of_measurement: "%", icon: "mdi:harddisk"}')
-        
-        mqtt_publish_retain "homeassistant/sensor/${HA_ID}/config" "$PAYLOAD"
-    done
+        HA_FREE_ID="${HOST_NAME}_disk_${DISK_ID}_free_bytes"
+        HA_SIZE_ID="${HOST_NAME}_disk_${DISK_ID}_size_bytes"
+
+        # 1. Publication MQTT (Seulement le brut)
+        # Capteur Libre
+        PAYLOAD_F=$(jq -n --arg name "Libre ${target}" --arg id "$HA_FREE_ID" --arg st "$DISK_TOPIC" --arg v "value_json.${DISK_ID}_free_bytes" --arg av "$AVAIL_TOPIC" --argjson dev "$DEVICE_JSON" \
+            '{name: $name, unique_id: $id, object_id: $id, state_topic: $st, value_template: ("{{ " + $v + " }}"), device_class: "data_size", unit_of_measurement: "B", availability_topic: $av, dev: $dev}')
+        mqtt_publish_retain "homeassistant/sensor/${HA_FREE_ID}/config" "$PAYLOAD_F"
+
+        # Capteur Total
+        PAYLOAD_T=$(jq -n --arg name "Total ${target}" --arg id "$HA_SIZE_ID" --arg st "$DISK_TOPIC" --arg v "value_json.${DISK_ID}_size_bytes" --arg av "$AVAIL_TOPIC" --argjson dev "$DEVICE_JSON" \
+            '{name: $name, unique_id: $id, object_id: $id, state_topic: $st, value_template: ("{{ " + $v + " }}"), device_class: "data_size", unit_of_measurement: "B", availability_topic: $av, dev: $dev}')
+        mqtt_publish_retain "homeassistant/sensor/${HA_SIZE_ID}/config" "$PAYLOAD_T"
+
+        # 2. Construction de la donnée CSV
+        CSV_DISKS_DATA+=$'\n'"\"${target}\",${fstype},${HA_FREE_ID},${HA_SIZE_ID}"
+
+        # Debug visuel dans tes boîtes
+        box_line "Registered:" "$target" 80
+
+    done < <(df -x tmpfs -x devtmpfs -x zfs --output=target,fstype | tail -n +2)
+
+    # Export final
+    echo -e "$CSV_DISKS_HDR$CSV_DISKS_DATA" > "/tmp/${HOST_NAME}_standard_disks.csv"
 fi
 
 # On confirme la disponibilité du NAS
@@ -481,10 +497,12 @@ mqtt_publish_retain "$AVAIL_TOPIC" "online"
 
 log_debug "--- DISCOVERY COMPLETE ---"
 
-# --- Test mode and CSV export ---
-if [[ "${BASH_SOURCE[0]}" == "${0}" ]]; then
+# --- 5. CSV Export Section ---
 
-    # --- CSV export using write_csv ---
-    write_csv "nvme.csv" "$CSV_LINES"
-    write_csv "zfs.csv" "$CSV_POOLS_HDR"$'\n'"$CSV_POOLS_DATA"
+if [[ -n "${OUTPUT_CSV_DIR:-}" ]]; then
+    box_begin "CSV EXPORTS"
+    box_line "ZFS:"      "$(write_csv "zfs.csv" "$CSV_POOLS_HDR" "$CSV_POOLS_DATA")"
+    box_line "Standard:" "$(write_csv "standard_disks.csv" "$CSV_DISKS_HDR" "$CSV_DISKS_DATA")"
+    box_line "NVMe:"     "$(write_csv "nvme.csv" "$CSV_LINES")"
+    box_end
 fi

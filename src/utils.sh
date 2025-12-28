@@ -191,87 +191,63 @@ mqtt_publish_no_retain() {
 
 # Clean old CSV backup files
 # Usage: cleanup_csv_backups (uses CSV_RETENTION_DAYS from config)
-cleanup_csv_backups() {
-    [[ -z "${OUTPUT_CSV_DIR:-}" ]] && return 0
-    [[ ! -d "$OUTPUT_CSV_DIR" ]] && return 0
-
-    local retention_days="${CSV_RETENTION_DAYS:-30}"
-    
-    log_debug "Cleaning CSV backups older than $retention_days days in $OUTPUT_CSV_DIR..."
-
-    local count=0
-    while IFS= read -r -d '' file; do
-        rm -f "$file" 2>/dev/null && ((count++))
-    done < <(find "$OUTPUT_CSV_DIR" -name "*.csv.bak" -type f -mtime "+$retention_days" -print0 2>/dev/null)
-
-    if [[ $count -gt 0 ]]; then
-        log_debug "Cleaned up $count old CSV backup file(s)"
-    fi
-}
-
-# Write CSV file with automatic backup and cleanup
-# Usage: write_csv "filename.csv" "content"
-# - Creates OUTPUT_CSV_DIR if necessary
-# - Backs up existing file to filename.csv.bak
-# - Automatically cleans old backups based on CSV_RETENTION_DAYS
-# - Skips if OUTPUT_CSV_DIR is not defined or content is empty
+# Write CSV and return status message
+# Usage: result=$(write_csv "file.csv" "Header" "Data")
+# Write CSV with backup, cleanup and selective writing
+# Returns a status message for box_line
 write_csv() {
     local csv_file="$1"
-    local csv_content="$2"
+    local arg2="$2"  # Header
+    local arg3="$3"  # Data
+    local csv_content=""
+    local warn=""
 
-    # Skip if CSV export is disabled
-    if [[ -z "${OUTPUT_CSV_DIR:-}" ]]; then
-        log_debug "CSV export disabled (OUTPUT_CSV_DIR not set)"
-        return 0
+    # 1. CAS : Désactivation totale (Tout est vide)
+    # Si on n'a même pas de header, c'est que le module est bypassé
+    if [[ -z "$arg2" && -z "$arg3" ]]; then
+        return 0 # Retourne une chaîne vide, box_line ne fera rien ou affichera vide
     fi
 
-    # Skip if content is empty
-    if [[ -z "$csv_content" ]]; then
-        log_debug "CSV content is empty, skipping file '$csv_file'"
-        return 0
+    # 2. CAS : Header présent mais Data vide (Scan effectué, rien trouvé)
+    if [[ -n "$arg2" && -z "$arg3" ]]; then
+        csv_content=$(echo -e "$arg2" | sed 's/\n$//')
+        local status_msg="INFO: Only Header (No data)"
+    else
+        # 3. CAS : Header + Data (Normal)
+        # Validation des colonnes
+        local c_hdr=$(echo -e "$arg2" | head -n 1 | awk -F',' '{print NF}')
+        local c_dat=$(echo -e "$arg3" | sed '/^$/d' | head -n 1 | awk -F',' '{print NF}')
+        [[ "$c_hdr" -ne "$c_dat" ]] && warn=" (Mismatch: $c_hdr/$c_dat cols)"
+        
+        csv_content=$(printf "%s\n%s" "$(echo -e "$arg2" | sed 's/\n$//')" "$(echo -e "$arg3" | sed '/^$/d')")
+        local lines=$(echo "$csv_content" | wc -l)
+        local status_msg="INFO: $lines lines$warn"
     fi
 
-    # Validate filename
-    if [[ ! "$csv_file" =~ ^[a-zA-Z0-9._-]+\.csv$ ]]; then
-        log_error "Invalid CSV filename: $csv_file (must end with .csv)"
-        return 1
-    fi
+    # --- Procédure d'écriture ---
+    [[ -z "${OUTPUT_CSV_DIR:-}" ]] && { echo "SKIP: No dir"; return 0; }
 
-    # Create output directory if it doesn't exist
     if [[ ! -d "$OUTPUT_CSV_DIR" ]]; then
-        if mkdir -p "$OUTPUT_CSV_DIR" 2>/dev/null; then
-            log_info "Created CSV export directory: $OUTPUT_CSV_DIR"
-        else
-            log_error "Failed to create CSV export directory: $OUTPUT_CSV_DIR"
+        if ! mkdir -p "$OUTPUT_CSV_DIR" 2>/dev/null; then
+            echo "ERROR: Cannot create directory"
             return 1
         fi
     fi
 
     local full_path="$OUTPUT_CSV_DIR/$csv_file"
+    [[ -f "$full_path" ]] && mv "$full_path" "$full_path.bak" 2>/dev/null
 
-    # Backup existing file
-    if [[ -f "$full_path" ]]; then
-        local backup_path="$full_path.bak"
-        if mv "$full_path" "$backup_path" 2>/dev/null; then
-            log_debug "Existing CSV backed up to '$backup_path'"
-        else
-            log_warn "Failed to backup existing CSV: $full_path"
-        fi
-    fi
-
-    # Write new CSV file
     if printf '%s\n' "$csv_content" > "$full_path" 2>/dev/null; then
-        log_debug "CSV file created: '$full_path' ($(wc -l < "$full_path") lines)"
-        
-        # Automatically cleanup old backups after successful write
-        cleanup_csv_backups
-        
+        cleanup_csv_backups >/dev/null 2>&1
+        echo "$status_msg"
         return 0
     else
-        log_error "Failed to write CSV file: $full_path"
+        echo "ERROR: Write failed"
         return 1
     fi
 }
+
+
 
 # ==============================================================================
 # UTILITY FUNCTIONS
@@ -304,14 +280,35 @@ check_dependencies() {
 # DISPLAY CONFIGURATION - BOX DRAWING FUNCTIONS
 # ==============================================================================
 
-# Begin a box section with a title
+# Supprime les codes ANSI pour calculer la longueur réelle affichée
+strip_colors() {
+    echo -e "$1" | sed 's/\x1b\[[0-9;]*m//g'
+}
+
+# Titre Majeur (Bordure double, centré)
+box_title() {
+    [[ "${DEBUG:-false}" != "true" ]] && return 0
+    local title="$1"
+    local width="${2:-80}"
+    local inner=$((width - 2))
+    [ ${#title} -gt $inner ] && title="${title:0:$((inner - 3))}..."
+    local t_len=${#title}
+    local l_pad=$(( (inner - t_len) / 2 ))
+    local r_pad=$(( inner - t_len - l_pad ))
+    printf "╔"; printf '═%.0s' $(seq 1 $inner); printf "╗\n"
+    printf "║%*s%s%*s║\n" "$l_pad" "" "$title" "$r_pad" ""
+    printf "╚"; printf '═%.0s' $(seq 1 $inner); printf "╝\n"
+}
+
+# Begin a box section with a title (Visible only in DEBUG mode)
 # Usage: box_begin "Title" [width]
 box_begin() {
+    [[ "${DEBUG:-false}" != "true" ]] && return 0
     local title="$1"
-    local width="${2:-64}"
+    local width="${2:-80}"
     local title_len=${#title}
     local dash_count=$((width - title_len - 4))
-    
+    [[ $dash_count -lt 0 ]] && dash_count=0
     printf "┌─ %s " "$title"
     printf '─%.0s' $(seq 1 $dash_count)
     printf "┐\n"
@@ -319,39 +316,60 @@ box_begin() {
 
 # Format a line inside a box with automatic padding
 # Usage: box_line "Label:" "Value" [width]
+# Format one or more lines inside a box if the content is too long
+# Usage: box_line "Label:" "Value" [width]
+# Display a line in a box with color support and perfect alignment
+# Usage: box_line "Label:" "Value" [width]
+# Affiche une ligne stylisée avec gestion des couleurs et de l'alignement
 box_line() {
+    [[ "${DEBUG:-false}" != "true" ]] && return 0
     local label="$1"
     local value="$2"
-    local width="${3:-64}"
+    local width="${3:-80}"
+    local max_in=$((width - 4))
+    
+    local RED='\e[31m'
+    local GREEN='\e[32m'
+    local YELLOW='\e[33m'
+    local NC='\e[0m'
+
+    # Coloration sémantique
+    if [[ "$value" =~ "ERROR" ]]; then
+        value="${RED}${value}${NC}"
+    elif [[ "$value" =~ "INFO" ]]; then
+        value="${GREEN}${value}${NC}"
+    elif [[ "$value" =~ "Disabled" || "$value" =~ "SKIP" ]]; then
+        value="${YELLOW}${value}${NC}"
+    fi
+
     local content="$label $value"
-    local content_len=${#content}
-    local padding=$((width - content_len - 2))
-    
-    # Ensure minimum padding
-    [[ $padding -lt 0 ]] && padding=0
-    
-    printf "│ %s%*s│\n" "$content" $padding ""
+    local plain_content=$(strip_colors "$content")
+    local padding=$((max_in - ${#plain_content}))
+
+    if [ $padding -lt 0 ]; then
+        printf "│ %b │\n" "${content:0:$max_in}"
+    else
+        printf "│ %b%*s │\n" "$content" "$padding" ""
+    fi
 }
 
 # End a box section
 # Usage: box_end [width]
 box_end() {
-    local width="${1:-64}"
-    local padding=$((width - 1))
+    [[ "${DEBUG:-false}" != "true" ]] && return 0
+    local width="${1:-80}"
+    local dash_count=$((width - 2))
+    [[ $dash_count -lt 0 ]] && dash_count=0
     printf "└"
-    printf '─%.0s' $(seq 1 $padding)
+    printf '─%.0s' $(seq 1 $dash_count)
     printf "┘\n"
 }
 
 # Display loaded configuration when run directly
 display_config() {
+    clear
 
-    cat <<'EOF'
-╔═══════════════════════════════════════════════════════════════╗
-║          SentryLab-PVE Configuration                          ║
-╚═══════════════════════════════════════════════════════════════╝
-
-EOF
+    box_title "SentryLab-PVE Configuration" 
 
     box_begin "MQTT Connection"
     box_line "Broker:" "$BROKER:$PORT"

@@ -24,14 +24,14 @@ SentryLab-PVE/
 │   ├── sentrylab.conf         # Central configuration (MQTT, Hostname)
 │   ├── utils.sh               # Shared functions
 │   ├── discovery.sh           # Activation tool (enable all the timers)
-│   ├── start.sh               # Activation tool (enable all the timers)
-│   ├── stop.sh                # Maintenance tool (disable the timers)
 │   ├── temp.sh                # Thermal monitoring
 │   ├── zfs.sh                 # ZFS Health & Space
 │   ├── wear.sh                # NVMe Wear level
 │   ├── health.sh              # NVMe Smart Health
 │   ├── *.service              # Systemd service units
-│   └── *.timer                # Systemd scheduling units
+│   ├── *.timer                # Systemd scheduling units
+│   ├── start.sh               # Activation tool (enable all the timers)
+│   └── stop.sh                # Maintenance tool (disable the timers)
 └── esphome/                   # IoT Monitoring examples
     ├── sentrylab-witty.yaml   # Full ESPHome example for Witty Cloud
     └── fragments.yaml         # Universal code blocks for any RGB LED
@@ -178,8 +178,8 @@ The `esphome/sentrylab-witty.yaml` provides a turnkey solution for a **Witty Clo
 
 ## 📝 Hardware Mapping (CSV)
 Upon startup, the discovery script exports your hardware mapping to:
-* `/usr/local/etc/sentrylab/maps/nvme_map.csv`
-* `/usr/local/etc/sentrylab/maps/zfs_map.csv`
+* `/var/lib/sentrylab/exports/nvme_map.csv`
+* `/var/lib/sentrylab/exports/zfs_map.csv`
 
 **Pro Tip:** Upload these CSV files to an AI (like ChatGPT or Claude) and ask: *"Using these hardware IDs, write the YAML for a Home Assistant dashboard using the flex-table-card."*
 
@@ -188,6 +188,6 @@ Upon startup, the discovery script exports your hardware mapping to:
 ## 🤝 Contributing
 Feel free to open issues or pull requests.
 
-**Author:** CmPi <cmpi@webe.fr>  
+**Author:** CmPi
 **Repository:** [https://github.com/CmPi/SentryLab-PVE](https://github.com/CmPi/SentryLab-PVE)  
 **License:** MIT
