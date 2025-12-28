@@ -6,7 +6,7 @@
 ## 🚀 Key Features
 * **Logical Separation**: Metrics are split into specialized scripts (Temp, ZFS, Wear, Health).
 * **Smart Automation**: Driven by Systemd Timers (no more messy crontabs).
-* **Physical Dashboard**: Optimized for ESP8266/ESP32 (Witty Cloud) to provide visual alerts (RGB LED color coding).
+* **Physical Dashboard**: Provide with an example for an ESP8266 (Witty Cloud) to provide visual alerts (RGB LED color coding).
 * **Safe Execution**: NVMe SMART checks are optimized to avoid waking up sleeping drives unnecessarily.
 * **AI-Ready**: Generates CSV maps of your hardware to help LLMs generate perfect Home Assistant dashboards for you.
 
@@ -17,24 +17,37 @@
 
 ```text
 SentryLab-PVE/
-├── install.sh                # Main installer (deploys scripts & units)
-├── sentrylab-config.conf      # Central configuration (MQTT, Hostname)
-├── sentrylab-start.sh         # Activation tool
-├── sentrylab-stop.sh          # Maintenance tool
+├── install.sh                 # Main installer (deploys scripts & units)
 ├── scripts/                   # Core engine
-│   ├── sentrylab-utils.sh     # Shared functions
-│   ├── sentrylab-temp.sh      # Thermal monitoring
-│   ├── sentrylab-zfs.sh       # ZFS Health & Space
-│   ├── sentrylab-wear.sh      # NVMe Wear level
-│   ├── sentrylab-health.sh    # NVMe Smart Health
+│   ├── config.conf            # Central configuration (MQTT, Hostname)
+│   ├── start.sh               # Activation tool
+│   ├── stop.sh                # Maintenance tool
+│   ├── utils.sh               # Shared functions
+│   ├── temp.sh                # Thermal monitoring
+│   ├── zfs.sh                 # ZFS Health & Space
+│   ├── wear.sh                # NVMe Wear level
+│   ├── health.sh              # NVMe Smart Health
 │   ├── *.service              # Systemd service units
 │   └── *.timer                # Systemd scheduling units
-└── esphome/                   # IoT Monitoring
+└── esphome/                   # IoT Monitoring examples
     ├── sentrylab-witty.yaml   # Full ESPHome example for Witty Cloud
     └── fragments.yaml         # Universal code blocks for any RGB LED
 ```
 
 ## 🛠️ Installation & Setup Guide
+
+### 0. Dependencies and prerequesites
+
+#### Prerequesites
+
+* HomeAssitant
+* A MQTT Broker
+* A host to be monitored
+
+#### host dependencies
+
+* **mosquitto_pub** for MQTT publication 
+* **jq** for json
 
 ### 1. Deployment
 
@@ -45,12 +58,43 @@ cd SentryLab-PVE
 sudo ./install.sh
 ```
 
-Note: The installer copies scripts to /usr/local/bin/ and systemd units to /etc/systemd/system/.
+Note: The installer copies scripts to /usr/local/bin/sentrylab/ and systemd units to /etc/systemd/system/.
+
+#### Deployed files location
+
+```text
+
+usr/
+├── local/           
+│   ├── etc/
+│   │   └── sentrylab.conf          # Configuration file to be modified
+│   └── bin/
+│       └── sentrylab/
+│           ├── discovery.sh        # Initial sensor discovery and MQTT declaration
+│           ├── temp.sh             # Thermal monitoring
+│           ├── zfs.sh              # ZFS oool(s) Health & Space
+│           ├── wear.sh             # NVMEs wear
+│           └── health.sh           # NVMe Smart Health
+etc/
+└── systemd/          
+    └── system/          
+        ├── sentrylab-discovery.service
+        ├── sentrylab-temp.service
+        ├── sentrylab-temp.timer
+        ├── sentrylab-zfs.service
+        ├── sentrylab-zfs.timer
+        ├── sentrylab-smart.service
+        └── sentrylab-smart.timer
+         
+```
 
 ### 2. Configuration
-Before starting the services, you must configure your MQTT broker settings:
 
+Before starting the services, you must configure your MQTT broker settings editing the configuration file (sentrylab-config.conf):
+
+```bash
 sudo nano /usr/local/etc/sentrylab/sentrylab-config.conf
+```
 
 Key Parameters:
 

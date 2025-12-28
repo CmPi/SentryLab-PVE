@@ -12,7 +12,7 @@ Wants=network-online.target
 
 [Service]
 Type=oneshot
-ExecStart=/usr/local/bin/sentrylab-discovery.sh
+ExecStart=/usr/local/bin/sentrylab/discovery.sh
 RemainAfterExit=yes
 
 [Install]

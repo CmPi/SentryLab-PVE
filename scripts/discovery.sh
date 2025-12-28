@@ -1,7 +1,7 @@
 #!/bin/bash
 
 #
-# @file /usr/local/bin/sentrylab-discovery.sh
+# @file /usr/local/bin/sentrylab/discovery.sh
 # @author CmPi <cmpi@webe.fr>
 # @brief Publie les capteurs du NAS vers Home Assistant pour la découverte automatique
 # @date 2025-12-27
@@ -17,10 +17,10 @@ set -euo pipefail
 # --- Include configuration et fonctions utilitaires ---
 # On cherche d'abord dans le dossier local du script
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-if [ -f "$SCRIPT_DIR/sentrylab-utils.sh" ]; then
-    source "$SCRIPT_DIR/sentrylab-utils.sh"
+if [ -f "$SCRIPT_DIR/utils.sh" ]; then
+    source "$SCRIPT_DIR/utils.sh"
 else
-    echo "ERROR: sentrylab-utils.sh not found!" >&2
+    echo "ERROR: utils.sh not found!" >&2
     exit 1
 fi
 
