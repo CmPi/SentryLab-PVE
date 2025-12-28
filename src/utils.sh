@@ -364,10 +364,11 @@ box_line() {
     
     local input="${1:-}"
     local width=${2:-$BOX_WIDTH}
-    [[ ! "$width" =~ ^[0-9]+$ ]] && width=$BOX_WIDTH
+    # Safety check: Ensure width is numeric
+    [[ ! "$width" =~ ^[0-9]+$ ]] && width=80
     local max_in=$((width - 4))
 
-    # Define colors using the \033 octal (most compatible)
+    # Define colors using Octal (highly compatible)
     local RED='\033[31m'
     local GRN='\033[32m'
     local YEL='\033[33m'
@@ -393,20 +394,21 @@ box_line() {
         fi
     fi
 
-    # 2. Fixed Strip Logic (Using sed with hex to be 100% sure)
-    # This prevents the "Stripped length: 0" error
+    # 2. Precise Strip for Length (Using sed with hex for accuracy)
     local plain_content
     plain_content=$(echo -ne "$text" | sed 's/\x1b\[[0-9;]*m//g')
     local total_len=${#plain_content}
 
-    # 3. Render Loop
+    # 3. Output Render
     while [[ ${#plain_content} -gt 0 ]]; do
         local chunk_plain="${plain_content:0:$max_in}"
         local padding=$((max_in - ${#chunk_plain}))
+        
+        # Calculate padding string
         local pad_str=$(printf "%*s" "$padding" "")
 
         if [[ ${#plain_content} -eq $total_len ]]; then
-            # %b is required to turn the \033 strings into actual colors
+            # %b expands the \033 into real color
             printf "│ %b%s │\n" "$text" "$pad_str"
         else
             printf "│ %s%s │\n" "$chunk_plain" "$pad_str"
