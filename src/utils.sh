@@ -110,6 +110,7 @@ WEAR_TOPIC="$BASE_TOPIC/wear"
 HEALTH_TOPIC="$BASE_TOPIC/health"
 ZFS_TOPIC="$BASE_TOPIC/zfs"
 AVAIL_TOPIC="$BASE_TOPIC/availability"
+DISK_TOPIC="$BASE_TOPIC/disks"
 HA_DISCOVERY_PREFIX="${HA_BASE_TOPIC:-homeassistant}"
 
 # ==============================================================================
