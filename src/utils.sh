@@ -367,6 +367,13 @@ box_line() {
     [[ ! "$width" =~ ^[0-9]+$ ]] && width=$BOX_WIDTH
     local max_in=$((width - 4))
 
+    # Define the literal Escape character for coloring
+    local ESC=$'\e'
+    local RED="${ESC}[31m"
+    local GRN="${ESC}[32m"
+    local YEL="${ESC}[33m"
+    local CLR="${ESC}[0m"
+
     local text=""
     
     # 1. Logic for "Label: Value" vs "Plain Text"
@@ -374,28 +381,25 @@ box_line() {
         local label="${input%%: *}: "
         local value="${input#*: }"
         
-        # Color the Value part only
-        if [[ "$value" == "ERROR"* ]]; then value="\e[31m${value}\e[0m"
-        elif [[ "$value" == "INFO"* ]]; then value="\e[32m${value}\e[0m"
+        if [[ "$value" == "ERROR"* ]]; then value="${RED}${value}${CLR}"
+        elif [[ "$value" == "INFO"* ]]; then value="${GRN}${value}${CLR}"
         elif [[ "$value" == "SKIP"* || "$value" =~ "Disabled" || "$value" =~ "Skipped" ]]; then 
-            value="\e[33m${value}\e[0m"
+            value="${YEL}${value}${CLR}"
         fi
         text="${label}${value}"
     else
-        # No colon-space found, color the whole line if it matches keywords
         text="$input"
-        if [[ "$text" == "ERROR"* ]]; then text="\e[31m${text}\e[0m"
-        elif [[ "$text" == "INFO"* ]]; then text="\e[32m${text}\e[0m"
+        if [[ "$text" == "ERROR"* ]]; then text="${RED}${text}${CLR}"
+        elif [[ "$text" == "INFO"* ]]; then text="${GRN}${text}${CLR}"
         elif [[ "$text" == "SKIP"* || "$text" =~ "Disabled" || "$text" =~ "Skipped" ]]; then 
-            text="\e[33m${text}\e[0m"
+            text="${YEL}${text}${CLR}"
         fi
     fi
 
-    # 2. Pure Bash Strip (Bulletproof)
-    local plain_content="${text//[$'\e']\[[0-9;]*m/}"
+    # 2. Pure Bash Strip (Matches the literal Escape byte we just defined)
+    local plain_content="${text//[$ESC]\[[0-9;]*m/}"
     local total_len=${#plain_content}
 
-    # Handle empty line case
     if [[ $total_len -eq 0 ]]; then
         printf "│ %*s │\n" "$max_in" ""
         return 0
@@ -407,10 +411,9 @@ box_line() {
         local padding=$((max_in - ${#chunk_plain}))
         
         if [[ ${#plain_content} -eq $total_len ]]; then
-            # First line: Use %b to render the colors in 'text'
+            # Using %b is crucial for interpreting backslashes if they remain
             printf "│ %b%*s │\n" "$text" "$padding" ""
         else
-            # Wrapped lines: Use %s for the plain chunk
             printf "│ %s%*s │\n" "$chunk_plain" "$padding" ""
         fi
         
