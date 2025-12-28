@@ -196,12 +196,12 @@ mqtt_publish_no_retain() {
 # Write CSV with backup, cleanup and selective writing
 # Returns a status message for box_line
 write_csv() {
-    local csv_file="$1"
-    local arg2="$2"  # Header
-    local arg3="$3"  # Data
+local csv_file="${1:-}"
+    local arg2="${2:-}"  # Header
+    local arg3="${3:-}"  # Data (Utilise :- pour éviter unbound variable)
     local csv_content=""
     local warn=""
-
+    
     # 1. CAS : Désactivation totale (Tout est vide)
     # Si on n'a même pas de header, c'est que le module est bypassé
     if [[ -z "$arg2" && -z "$arg3" ]]; then
