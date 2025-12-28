@@ -268,7 +268,7 @@ for hw_path in /sys/class/hwmon/hwmon*; do
         CSV_LINES+="${HOST_NAME}_${HA_ID},Health,\"${HA_LABEL}\",${SN},${NVME_SLOT_ID}"$'\n'
     fi
 
-    if [[ "$PUSH_TEMP" == "true" ]]; then
+    if [[ "$PUSH_NVME_TEMP" == "true" ]]; then
         # --- Temperature sensors ---
         for t_file in "$hw_path"/temp*_input; do
             [[ -f "$t_file" ]] || continue
@@ -321,7 +321,7 @@ done
 
 if [[ "$PUSH_ZFS" == "true" ]]; then
 
-    log_box_begin "-- Pools ZFS ${POOLS}"
+    box_begin "-- Pools ZFS ${POOLS}"
 
     POOLS=$(zpool list -H -o name 2>/dev/null || true)
     if [[ -z "$POOLS" ]]; then

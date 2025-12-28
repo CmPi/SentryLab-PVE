@@ -1,0 +1,17 @@
+#
+# @file /etc/systemd/system/sentrylab-active.timer
+# @author CmPi <cmpi@webe.fr>
+# @repo https://github.com/CmPi/SentryLab-PVE
+# @brief Fetch data in active way (awaking devices if needed)
+#
+
+[Unit]
+Description=Timer for SentryLab active sensors (evening)
+
+[Timer]
+OnBootSec=10min
+OnCalendar=*-*-* 21:30:00
+Unit=sentrylab-active.service
+
+[Install]
+WantedBy=timers.target

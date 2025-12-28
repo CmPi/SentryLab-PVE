@@ -1,0 +1,17 @@
+#
+# @file /etc/systemd/system/sentrylab-passive.timer
+# @author CmPi <cmpi@webe.fr>
+# @repo https://github.com/CmPi/SentryLab-PVE
+# @brief Fetch data in a passive way (not awaking devices)
+#
+
+[Unit]
+Description=Timer for SentryLab passive sensors (3 minutes)
+
+[Timer]
+OnBootSec=2min
+OnUnitActiveSec=3min
+Unit=sentrylab-passive.service
+
+[Install]
+WantedBy=timers.target

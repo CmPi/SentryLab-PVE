@@ -1,0 +1,16 @@
+#
+# @file /etc/systemd/system/sentrylab-passive.service
+# @author CmPi <cmpi@webe.fr>
+# @repo https://github.com/CmPi/SentryLab-PVE
+# @brief Fetch data in a passive way (not awaking devices)
+#
+
+[Unit]
+Description=SentryLab passive sensors polling (no disk wake)
+After=network.target
+
+[Service]
+Type=oneshot
+ExecStart=/usr/local/bin/sentrylab/passive.sh
+StandardOutput=journal
+StandardError=journal
