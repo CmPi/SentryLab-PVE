@@ -419,43 +419,43 @@ display_config() {
     box_title "SentryLab-PVE Configuration" 
 
     box_begin "MQTT Connection"
-    box_line "Broker:" "$BROKER:$PORT"
-    box_line "User:" "$USER"
-    box_line "QoS Level:" "$MQTT_QOS"
-    box_line "Debug Mode:" "${DEBUG:-false}"
+    box_line "Broker: $BROKER:$PORT"
+    box_line "User: $USER"
+    box_line "QoS Level: $MQTT_QOS"
+    box_line "Debug Mode: {DEBUG:-false}"
     box_end
     echo
 
     box_begin "Host Information"
-    box_line "Hostname:" "$HOST_NAME"
-    box_line "Base Topic:" "$BASE_TOPIC"
-    box_line "HA Discovery:" "$HA_DISCOVERY_PREFIX"
+    box_line "Hostname: $HOST_NAME"
+    box_line "Base Topic: $BASE_TOPIC"
+    box_line "HA Discovery: $HA_DISCOVERY_PREFIX"
     box_end
     echo
 
     box_begin "CSV Export"
-    box_line "Directory:" "${OUTPUT_CSV_DIR:-[not configured]}"
-    box_line "Retention:" "${CSV_RETENTION_DAYS:-30} days"
+    box_line "Directory: ${OUTPUT_CSV_DIR:-[not configured]}"
+    box_line "Retention: ${CSV_RETENTION_DAYS:-30} days"
     if [[ -n "${OUTPUT_CSV_DIR:-}" && -d "$OUTPUT_CSV_DIR" ]]; then
-        box_line "Status:" "Directory exists"
+        box_line "Status: Directory exists"
     else
-        box_line "Status:" "Disabled or directory missing"
+        box_line "Status: Disabled or directory missing"
     fi
     box_end
     echo
 
     box_begin "Monitoring Features"
-    box_line "System Monitoring:" "${PUSH_SYSTEM:-false}"
-    box_line "NVMe Temperature:" "${PUSH_NVME_TEMP:-false}"
-    box_line "NVMe Wear:" "${PUSH_NVME_WEAR:-false}"
-    box_line "NVMe Health:" "${PUSH_NVME_HEALTH:-false}"
-    box_line "ZFS Datasets:" "${PUSH_ZFS:-false}"
-    box_line "Non-ZFS Disks:" "${PUSH_NON_ZFS:-false}"
+    box_line "System Monitoring: ${PUSH_SYSTEM:-false}"
+    box_line "NVMe Temperature: ${PUSH_NVME_TEMP:-false}"
+    box_line "NVMe Wear: ${PUSH_NVME_WEAR:-false}"
+    box_line "NVMe Health: ${PUSH_NVME_HEALTH:-false}"
+    box_line "ZFS Datasets: ${PUSH_ZFS:-false}"
+    box_line "Non-ZFS Disks: ${PUSH_NON_ZFS:-false}"
     box_end
     echo
 
     box_begin "Configuration File"
-    box_line "Path:" "$CONFIG_PATH"
+    box_line "Path: $CONFIG_PATH"
     box_end
 }
 
