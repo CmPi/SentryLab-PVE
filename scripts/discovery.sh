@@ -14,13 +14,15 @@
 
 set -euo pipefail
 
-# --- Include configuration et fonctions utilitaires ---
-# On cherche d'abord dans le dossier local du script
+# Load shared utility functions from the script directory.
+# Abort execution if the required file is missing.
+
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+
 if [ -f "$SCRIPT_DIR/utils.sh" ]; then
     source "$SCRIPT_DIR/utils.sh"
 else
-    echo "ERROR: utils.sh not found!" >&2
+    echo "ERROR: Required file '$SCRIPT_DIR/utils.sh' not found." >&2
     exit 1
 fi
 
@@ -159,3 +161,5 @@ done
 mqtt_publish_retain "$AVAIL_TOPIC" "online"
 
 log_debug "--- DISCOVERY COMPLETE ---"
+
+

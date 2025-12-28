@@ -11,4 +11,4 @@ After=network.target
 
 [Service]
 Type=oneshot
-ExecStart=/usr/local/bin/sentrylab-temp.sh
+ExecStart=/usr/local/bin/sentrylab/temp.sh

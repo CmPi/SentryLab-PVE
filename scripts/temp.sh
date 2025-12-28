@@ -1,4 +1,5 @@
 #!/bin/bash
+
 #
 # @file /usr/local/bin/sentrylab-temp.sh
 # @author CmPi <cmpi@webe.fr>
@@ -13,11 +14,16 @@
 
 set -euo pipefail
 
-# --- Include configuration et fonctions ---
-if [ -f "$(dirname "$0")/sentrylab-utils.sh" ]; then
-    source "$(dirname "$0")/sentrylab-utils.sh"
+# Load shared utility functions from the script directory.
+# Abort execution if the required file is missing.
+
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+
+if [ -f "$SCRIPT_DIR/utils.sh" ]; then
+    source "$SCRIPT_DIR/utils.sh"
 else
-    source /usr/local/bin/sentrylab-utils.sh
+    echo "ERROR: Required file '$SCRIPT_DIR/utils.sh' not found." >&2
+    exit 1
 fi
 
 # --- Initialisation JSON ---

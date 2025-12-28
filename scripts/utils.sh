@@ -1,14 +1,14 @@
 #!/bin/bash
 
 #
-# @file /usr/local/bin/sentrylab-utils.sh
+# @file /usr/local/bin/sentrylab/utils.sh
 # @author CmPi <cmpi@webe.fr>
 # @brief Global functions for SentryLab-PVE
 # @date 2025-12-27
 # @version 1.1.361
-# @usage source "$(dirname "$0")/sentrylab-utils.sh"
+# @usage source "$(dirname "$0")/utils.sh"
 # @notes * make it executable as usual using the command:
-#          chmod +x /usr/local/bin/*.sh
+#          chmod +x /usr/local/bin/sentrylab/*.sh
 #        * run it as a script to display current configuration
 #        * otherwise let the other SentryLab scrips source it for functions 
 #       
@@ -24,8 +24,6 @@ log_error() {
 # Prioritize /usr/local/etc for production, then local project root for dev
 if [ -f "/usr/local/etc/sentrylab.conf" ]; then
     CONFIG_PATH="/usr/local/etc/sentrylab.conf"
-elif [ -f "$(dirname "$0")/../config.conf" ]; then
-    CONFIG_PATH="$(dirname "$0")/../config.conf"
 else
     log_error "Configuration file not found (sentrylab.conf or config.conf)!"
     exit 1
@@ -94,12 +92,59 @@ mqtt_publish_no_retain() {
     fi
 }
 
-# --- Test mode ---
+# --- Write CSV with backup ---
+# Usage: write_csv "filename.csv" "content"
+# - Writes to OUTPUT_CSV_DIR if defined and content is not empty
+# - Creates OUTPUT_CSV_DIR if necessary
+# - Backs up existing file to filename.csv.bak
+# - Debug mode logs actions
+write_csv() {
+    local csv_file="$1"
+    local csv_content="$2"
+
+    # Skip if OUTPUT_CSV_DIR is not defined
+    [[ -z "${OUTPUT_CSV_DIR:-}" ]] && return 0
+
+    # Do not create file if content is empty
+    if [[ -z "$csv_content" ]]; then
+        log_debug "CSV content is empty, skipping file '$csv_file'"
+        return 0
+    fi
+
+    # Ensure output directory exists
+    if [ ! -d "$OUTPUT_CSV_DIR" ]; then
+        mkdir -p "$OUTPUT_CSV_DIR" || { log_debug "Failed to create OUTPUT_CSV_DIR: $OUTPUT_CSV_DIR"; return 1; }
+        log_debug "Created OUTPUT_CSV_DIR: $OUTPUT_CSV_DIR"
+    fi
+
+    local full_path="$OUTPUT_CSV_DIR/$csv_file"
+
+    # Backup existing file if it exists
+    if [ -f "$full_path" ]; then
+        local backup_path="$full_path.bak"
+        mv "$full_path" "$backup_path" || { log_debug "Failed to backup existing CSV to $backup_path"; return 1; }
+        log_debug "Existing CSV backed up to '$backup_path'"
+    fi
+
+    # Write new CSV
+    printf '%s\n' "$csv_content" > "$full_path" || { log_debug "Failed to write CSV to $full_path"; return 1; }
+
+    log_debug "CSV file created at '$full_path'"
+}
+
+
+# --- Display loaded configuration when run directly ---
 if [[ "${BASH_SOURCE[0]}" == "${0}" ]]; then
-    echo "--- SentryLab-PVE Utils Test ($BASH_SOURCE) ---"
-    echo "Version: 1.1.361"
+    echo "--- SentryLab-PVE Utils Configuration ---"
     echo "Broker: $BROKER:$PORT"
     echo "Host: $HOST_NAME"
-    echo "HA Prefix: $HA_DISCOVERY_PREFIX"
-    echo "--- End of Test ---"
+    echo "HA Discovery Prefix: $HA_DISCOVERY_PREFIX"
+    echo "CSV export directory: ${OUTPUT_CSV_DIR:-not defined}"
+    echo "Feature toggles:"
+    echo "  PUSH_ZFS=$PUSH_ZFS"
+    echo "  PUSH_TEMP=$PUSH_TEMP"
+    echo "  PUSH_NVME_WEAR=$PUSH_NVME_WEAR"
+    echo "  PUSH_NVME_HEALTH=$PUSH_NVME_HEALTH"
+    echo "  PUSH_NON_ZFS=$PUSH_NON_ZFS"
+    echo "--- End of configuration ---"
 fi

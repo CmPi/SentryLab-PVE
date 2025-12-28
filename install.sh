@@ -17,8 +17,7 @@ if [ "$EUID" -ne 0 ]; then echo "Veuillez lancer en root"; exit 1; fi
 echo "--- INSTALLATION SENTRYLAB-PVE ---"
 
 # 1. Création des dossiers
-mkdir -p /usr/local/bin
-mkdir -p /usr/local/etc/sentrylab/maps
+mkdir -p /usr/local/bin/sentrylab
 
 # 2. Déploiement des scripts
 echo "Déploiement des scripts vers /usr/local/bin/..."
