@@ -445,10 +445,12 @@ display_config() {
     box_title "SentryLab-PVE Configuration" 
 
     box_begin "MQTT Connection"
-    box_line "Broker: $BROKER:$PORT"
-    box_line "User: $USER"
-    box_line "QoS Level: $MQTT_QOS"
-    box_line "Debug Mode: {DEBUG:-false}"
+    # Ensure $PORT is treated as part of the value for coloring
+    box_line "Broker: ${BROKER}:${PORT}"
+    box_line "User: ${USER:-[none]}"
+    box_line "QoS Level: ${MQTT_QOS:-0}"
+    # Fixed the missing $ before {DEBUG}
+    box_line "Debug Mode: ${DEBUG:-false}"
     box_end
     echo
 
@@ -462,10 +464,11 @@ display_config() {
     box_begin "CSV Export"
     box_line "Directory: ${OUTPUT_CSV_DIR:-[not configured]}"
     box_line "Retention: ${CSV_RETENTION_DAYS:-30} days"
+    # Logic remains the same, box_line will handle the coloring of 'Status'
     if [[ -n "${OUTPUT_CSV_DIR:-}" && -d "$OUTPUT_CSV_DIR" ]]; then
         box_line "Status: Directory exists"
     else
-        box_line "Status: Disabled or directory missing"
+        box_line "Status: ERROR: Disabled or directory missing"
     fi
     box_end
     echo
