@@ -192,6 +192,18 @@ mqtt_publish_no_retain() {
 
 # Clean old CSV backup files
 # Usage: cleanup_csv_backups (uses CSV_RETENTION_DAYS from config)
+
+cleanup_csv_backups() {
+    local retention_days="${CSV_RETENTION_DAYS:-30}"
+    [[ "$retention_days" =~ ^[0-9]+$ ]] || retention_days=30
+    [[ -z "${OUTPUT_CSV_DIR:-}" || ! -d "$OUTPUT_CSV_DIR" ]] && return 0
+    find "$OUTPUT_CSV_DIR" -type f -name "*.bak" -mtime +"$retention_days" \
+        -exec rm -f {} \; 2>/dev/null || true
+}
+
+
+
+
 # Write CSV and return status message
 # Usage: result=$(write_csv "file.csv" "Header" "Data")
 # Write CSV with backup, cleanup and selective writing
