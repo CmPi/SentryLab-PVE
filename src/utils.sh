@@ -25,7 +25,10 @@ log_error() {
 
 # Log debug messages (only when DEBUG=true)
 log_debug() {
-    [[ "${DEBUG:-false}" == "true" ]] && echo "[DEBUG] $(date '+%Y-%m-%d %H:%M:%S') - $*"
+    if [[ "${DEBUG:-false}" == "true" ]]; then
+        echo "[DEBUG] $(date '+%Y-%m-%d %H:%M:%S') - $*"
+    fi
+    return 0
 }
 
 # Log info messages
