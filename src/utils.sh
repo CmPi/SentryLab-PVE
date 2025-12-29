@@ -164,7 +164,11 @@ mqtt_publish_retain() {
             return 0
         else
             log_error "Failed to publish to $topic"
-            [[ -n "$mqtt_out" ]] && box_line "$mqtt_out" "RED"
+            if [[ -n "$mqtt_out" ]]; then
+                box_line "ERROR: $mqtt_out" "RED"
+            else
+                box_line "ERROR: Failed to publish (unknown error)" "RED"
+            fi
             return 1
         fi
     else
@@ -221,7 +225,11 @@ mqtt_publish_no_retain() {
             return 0
         else
             log_error "Failed to publish to $topic"
-            [[ -n "$mqtt_out" ]] && box_line "$mqtt_out" "RED"
+            if [[ -n "$mqtt_out" ]]; then
+                box_line "ERROR: $mqtt_out" "RED"
+            else
+                box_line "ERROR: Failed to publish (unknown error)" "RED"
+            fi
             return 1
         fi
     else
