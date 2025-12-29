@@ -137,7 +137,7 @@ mqtt_publish_retain() {
     if [[ "${DEBUG:-false}" == "true" ]]; then
         box_line "Would publish (RETAIN)"
         box_value "Topic" "$topic"
-        box_value "Payload" "${payload:0:150}"
+        box_value "Payload" "${payload}"
         return 0
     fi
 
@@ -336,16 +336,15 @@ box_title() {
 # Supprime les codes ANSI (codes couleur)
 strip_ansi() {
     local s="$1"
-    # Remove ANSI escape sequences (color codes) reliably
-        # Remove ANSI escape sequences (color codes) using pure Bash (no external tools)
-        # Matches CSI sequences starting with ESC '[' followed by digits/semicolons and a final letter
-        local regex=$'\033\[[0-9;]*[ -/]*[@-~]'
-        # Iteratively remove all matches using BASH_REMATCH
-        while [[ $s =~ $regex ]]; do
-            local match="${BASH_REMATCH[0]}"
-            s="${s//$match/}"
-        done
-        printf '%s' "$s"
+    # Remove ANSI escape sequences (color codes) using pure Bash (no external tools)
+    # Matches CSI sequences starting with ESC '[' followed by digits/semicolons and a final letter
+    local regex=$'\033\[[0-9;]*[ -/]*[@-~]'
+    # Iteratively remove all matches using BASH_REMATCH
+    while [[ $s =~ $regex ]]; do
+        local match="${BASH_REMATCH[0]}"
+        s="${s//$match/}"
+    done
+    printf '%s' "$s"
 }
 
 
@@ -424,15 +423,6 @@ str_width() {
     
     echo "$w"
 }
-
-
-
-
-
-
-
-
-
 
 wrap_text() {
     local text="$1"
@@ -534,21 +524,22 @@ wrap_text() {
     printf '%s' "$out"
 }
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
+# Convert color name to ANSI code
+# Usage: color=$(get_color_code "RED") 
+# Supported: RED, GREEN, YELLOW, BLUE, MAGENTA, CYAN, WHITE
+get_color_code() {
+    local color_name="${1:-CYAN}"
+    case "${color_name^^}" in
+        RED)    echo $'\033[31m' ;;
+        GREEN)  echo $'\033[32m' ;;
+        YELLOW) echo $'\033[33m' ;;
+        BLUE)   echo $'\033[34m' ;;
+        MAGENTA) echo $'\033[35m' ;;
+        CYAN)   echo $'\033[36m' ;;
+        WHITE)  echo $'\033[37m' ;;
+        *)      echo $'\033[36m' ;;  # Default to CYAN
+    esac
+}
 
 # Print a label:value pair. The label is kept on the first line and the value is colored.
 # The value may wrap across multiple lines; wrapped lines start aligned at the value column
@@ -600,33 +591,33 @@ box_value() {
     local first=true
     while IFS= read -r line || [[ -n "$line" ]]; do
         if [[ "$first" == true ]]; then
-            # compute padding for the rest of the line
-            local vis=$(str_width "$line")
-            local pad=$((avail - vis))
-            [[ $pad -lt 0 ]] && pad=0
-            printf "│ %s%b%s%b%*s │\n" "$label_txt" "$color" "$line" "$CLR" "$pad" ""
+            # pad line to available width, then apply color/reset
+            local padded_line
+            printf -v padded_line "%-*s" "$avail" "$line"
+            printf "│ %s%b%s%b │\n" "$label_txt" "$color" "$padded_line" "$CLR"
             first=false
         else
-            # subsequent lines: indent to value column
-            local vis=$(str_width "$line")
-            local pad=$((avail - vis))
-            [[ $pad -lt 0 ]] && pad=0
-            # build indent
+            # subsequent lines: indent to value column, pad, then color/reset
             local indent=""
             # create spaces equal to label width
             for ((i=0;i<label_w;i++)); do indent+=" "; done
-            printf "│ %s%b%s%b%*s │\n" "$indent" "$color" "$line" "$CLR" "$pad" ""
+            local padded_line
+            printf -v padded_line "%-*s" "$avail" "$line"
+            printf "│ %s%b%s%b │\n" "$indent" "$color" "$padded_line" "$CLR"
         fi
     done <<< "$wrapped_value"
 }
 
 
-# Print arbitrary text lines inside the box. Uses a single color chosen from keywords.
-# Usage: box_line "Some text potentially multi-line" [width]
+# Print arbitrary text lines inside the box. Uses a single color chosen from keywords or explicit.
+# Usage: box_line "Some text" [width] [color_name]
+# Color names: RED, GREEN, YELLOW, BLUE, MAGENTA, CYAN, WHITE
+# If no color specified, auto-detects based on keywords (ERROR, INFO, SKIP, etc.)
 box_line() {
     [[ "${DEBUG:-false}" != "true" ]] && return 0
     local input="${1-}"
     local width="${2-$BOX_WIDTH}"
+    local color_override="${3-}"
     [[ ! "$width" =~ ^[0-9]+$ ]] && width=$BOX_WIDTH
     local inner=$((width - 4))
 
@@ -637,14 +628,21 @@ box_line() {
     local CYA=$'\033[36m'
     local CLR=$'\033[0m'
 
-    # choose a single color for the whole input based on keywords
+    # choose a single color for the whole input
     local color="$CYA"
-    if [[ "$input" == ERROR* || "$input" == *ERROR* ]]; then
-        color="$RED"
-    elif [[ "$input" == INFO* || "$input" == *INFO* ]]; then
-        color="$GRN"
-    elif [[ "$input" == SKIP* || "$input" == *Disabled* ]]; then
-        color="$YEL"
+    
+    # If explicit color provided, use it
+    if [[ -n "$color_override" ]]; then
+        color=$(get_color_code "$color_override")
+    else
+        # Otherwise, auto-detect based on keywords
+        if [[ "$input" == ERROR* || "$input" == *ERROR* ]]; then
+            color="$RED"
+        elif [[ "$input" == INFO* || "$input" == *INFO* ]]; then
+            color="$GRN"
+        elif [[ "$input" == SKIP* || "$input" == *Disabled* ]]; then
+            color="$YEL"
+        fi
     fi
 
     if [[ -z "$input" ]]; then
@@ -655,23 +653,11 @@ box_line() {
     local wrapped
     wrapped=$(wrap_text "$input" "$inner")
     while IFS= read -r line || [[ -n "$line" ]]; do
-        local vis=$(str_width "$line")
-        local pad=$((inner - vis))
-        [[ $pad -lt 0 ]] && pad=0
-        printf "│ %b%s%b%*s │\n" "$color" "$line" "$CLR" "$pad" ""
+        local padded_line
+        printf -v padded_line "%-*s" "$inner" "$line"
+        printf "│ %b%s%b │\n" "$color" "$padded_line" "$CLR"
     done <<< "$wrapped"
 }
-
-
-
-
-
-
-
-
-
-
-
 
 # End a box section
 # Usage: box_end [width]
@@ -694,11 +680,9 @@ display_config() {
     box_title "SentryLab-PVE Configuration" 
 
     box_begin "MQTT Connection"
-    # Ensure $PORT is treated as part of the value for coloring
     box_value "Broker" "${BROKER}:${PORT}"
     box_value "User" "${USER:-[none]}"
     box_value "QoS Level" "${MQTT_QOS:-0}"
-    # Fixed the missing $ before {DEBUG}
     box_value "Debug Mode" "${DEBUG:-false}"
     box_end
     echo
@@ -713,7 +697,6 @@ display_config() {
     box_begin "CSV Export"
     box_value "Directory" "${OUTPUT_CSV_DIR:-[not configured]}"
     box_value "Retention" "${CSV_RETENTION_DAYS:-30} days"
-    # Logic remains the same, box_value will handle the coloring of 'Status'
     if [[ -n "${OUTPUT_CSV_DIR:-}" && -d "$OUTPUT_CSV_DIR" ]]; then
         box_value "Status" "Directory exists"
     else

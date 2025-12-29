@@ -83,6 +83,7 @@ if [[ "$PUSH_SYSTEM" == "true" ]]; then
 
     # include hostname in HA ID (to avoid conflicts if other NAS or Workstations report their CPU temperature)
 
+    box_line ""
     box_line "CPU temperature"
     HA_ID="${HOST_NAME}_cpu_temp"
     HA_LABEL="Température du CPU"
