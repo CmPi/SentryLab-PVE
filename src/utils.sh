@@ -151,14 +151,33 @@ mqtt_publish_retain() {
         return 0
     fi
 
-    if mosquitto_pub -h "$BROKER" -p "$PORT" \
-                     -u "$USER" -P "$PASS" \
-                     -t "$topic" -m "$payload" -r -q "$MQTT_QOS" 2>/dev/null; then
-        log_debug "Published (Retain) to $topic"
-        return 0
+    if [[ "${INTERACTIVE:-false}" == "true" ]]; then
+        # Interactive mode: capture output and display with box_line
+        local mqtt_out
+        mqtt_out=$(mosquitto_pub -h "$BROKER" -p "$PORT" \
+                         -u "$USER" -P "$PASS" \
+                         -t "$topic" -m "$payload" -r -q "$MQTT_QOS" 2>&1)
+        local mqtt_rc=$?
+        if [[ $mqtt_rc -eq 0 ]]; then
+            log_debug "Published (Retain) to $topic"
+            [[ -n "$mqtt_out" ]] && box_line "$mqtt_out" "LIGHTGRAY"
+            return 0
+        else
+            log_error "Failed to publish to $topic"
+            [[ -n "$mqtt_out" ]] && box_line "$mqtt_out" "RED"
+            return 1
+        fi
     else
-        log_error "Failed to publish to $topic"
-        return 1
+        # Non-interactive mode: let journal collect output
+        if mosquitto_pub -h "$BROKER" -p "$PORT" \
+                         -u "$USER" -P "$PASS" \
+                         -t "$topic" -m "$payload" -r -q "$MQTT_QOS"; then
+            log_debug "Published (Retain) to $topic"
+            return 0
+        else
+            log_error "Failed to publish to $topic"
+            return 1
+        fi
     fi
 }
 
@@ -185,18 +204,41 @@ mqtt_publish_no_retain() {
         return 0
     fi
 
-    if mosquitto_pub -h "$BROKER" -p "$PORT" \
-                     -u "$USER" -P "$PASS" \
-                     -t "$topic" -m "$payload" \
-                     --will-topic "$AVAIL_TOPIC" \
-                     --will-payload "offline" \
-                     --will-retain \
-                     -q "$MQTT_QOS" 2>/dev/null; then
-        log_debug "Published (No-Retain) to $topic"
-        return 0
+    if [[ "${INTERACTIVE:-false}" == "true" ]]; then
+        # Interactive mode: capture output and display with box_line
+        local mqtt_out
+        mqtt_out=$(mosquitto_pub -h "$BROKER" -p "$PORT" \
+                         -u "$USER" -P "$PASS" \
+                         -t "$topic" -m "$payload" \
+                         --will-topic "$AVAIL_TOPIC" \
+                         --will-payload "offline" \
+                         --will-retain \
+                         -q "$MQTT_QOS" 2>&1)
+        local mqtt_rc=$?
+        if [[ $mqtt_rc -eq 0 ]]; then
+            log_debug "Published (No-Retain) to $topic"
+            [[ -n "$mqtt_out" ]] && box_line "$mqtt_out" "LIGHTGRAY"
+            return 0
+        else
+            log_error "Failed to publish to $topic"
+            [[ -n "$mqtt_out" ]] && box_line "$mqtt_out" "RED"
+            return 1
+        fi
     else
-        log_error "Failed to publish to $topic"
-        return 1
+        # Non-interactive mode: let journal collect output
+        if mosquitto_pub -h "$BROKER" -p "$PORT" \
+                         -u "$USER" -P "$PASS" \
+                         -t "$topic" -m "$payload" \
+                         --will-topic "$AVAIL_TOPIC" \
+                         --will-payload "offline" \
+                         --will-retain \
+                         -q "$MQTT_QOS"; then
+            log_debug "Published (No-Retain) to $topic"
+            return 0
+        else
+            log_error "Failed to publish to $topic"
+            return 1
+        fi
     fi
 }
 
