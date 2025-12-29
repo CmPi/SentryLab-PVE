@@ -29,7 +29,7 @@ MONITORING_ENABLED=false
 # --- System Metrics (CPU temp, chassis, load, cores) ---
 if [[ "${PUSH_SYSTEM:-false}" == "true" ]]; then
     log_debug "Running system metrics collection..."
-    if "$SCRIPT_DIR/temp.sh"; then
+    if "$SCRIPT_DIR/system.sh"; then
         log_debug "✓ System metrics collected"
         MONITORING_ENABLED=true
     else

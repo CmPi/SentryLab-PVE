@@ -87,7 +87,7 @@ if [[ "$PUSH_SYSTEM" == "true" ]]; then
     HA_ID="${HOST_NAME}_cpu_temp"
     HA_LABEL="Température du CPU"
     CFG_TOPIC="homeassistant/sensor/${HA_ID}/config"
-    PAYLOAD=$(jq -n 
+    PAYLOAD=$(jq -n \
         --arg name "$HA_LABEL" \
         --arg unique_id "$HA_ID" \
         --arg stat_t "$SYSTEM_TOPIC" \
@@ -123,9 +123,6 @@ if [[ "$PUSH_SYSTEM" == "true" ]]; then
         --arg unique_id "$HA_ID" \
         --arg stat_t "$SYSTEM_TOPIC" \
         --arg val_tpl '{{ value_json.chassis }}' \
-        --arg unit "°C" \
-        --arg icon "mdi:thermometer" \
-        --arg dev_cla "temperature" \
         --arg av_t "$AVAIL_TOPIC" \
         --argjson dev "$DEVICE_JSON" \
         '{
@@ -134,9 +131,9 @@ if [[ "$PUSH_SYSTEM" == "true" ]]; then
             object_id: $unique_id,
             state_topic: $stat_t,
             value_template: $val_tpl,
-            unit_of_measurement: $unit,
-            icon: $icon,
-            device_class: $dev_cla,
+            unit_of_measurement: "°C",
+            icon: "mdi:thermometer",
+            device_class: "temperature",
             availability_topic: $av_t,        
             dev: $dev
         }'
