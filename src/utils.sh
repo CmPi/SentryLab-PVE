@@ -610,7 +610,7 @@ box_value() {
             # pad line to available width (UTF-8 aware), then apply color/reset
             local padded_line
             padded_line=$(pad_to_width "$line" "$avail")
-            printf "│ %s%b%s%b│\n" "$label_txt" "$color" "$padded_line" "$CLR"
+            printf "│ %s%b%s%b │\n" "$label_txt" "$color" "$padded_line" "$CLR"
             first=false
         else
             # subsequent lines: indent to value column, pad (UTF-8 aware), then color/reset
@@ -619,7 +619,7 @@ box_value() {
             for ((i=0;i<label_w;i++)); do indent+=" "; done
             local padded_line
             padded_line=$(pad_to_width "$line" "$avail")
-            printf "│ %s%b%s%b│\n" "$indent" "$color" "$padded_line" "$CLR"
+            printf "│ %s%b%s%b │\n" "$indent" "$color" "$padded_line" "$CLR"
         fi
     done <<< "$wrapped_value"
 }
@@ -672,7 +672,7 @@ box_line() {
     fi
 
     if [[ -z "$input" ]]; then
-        printf "│ %*s│\n" "$inner" ""
+        printf "│ %*s │\n" "$inner" ""
         return
     fi
 
@@ -682,15 +682,15 @@ box_line() {
         local padded_line
         padded_line=$(pad_to_width "$line" "$inner")
         if [[ -n "$color" ]]; then
-            printf "│ %b%s%b│\n" "$color" "$padded_line" "$CLR"
+            printf "│ %b%s%b │\n" "$color" "$padded_line" "$CLR"
         else
-            printf "│ %s│\n" "$padded_line"
+            printf "│ %s │\n" "$padded_line"
         fi
     done <<< "$wrapped"
 }
 
 # End a box section
-# Usage: box_end [width]
+# Usage: box_end [wiydth]
 box_end() {
     [[ "${DEBUG:-false}" != "true" ]] && return 0
     local width="${1:-$BOX_WIDTH}"
