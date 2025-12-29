@@ -10,7 +10,9 @@
 # @notes * make it executable as usual using the command:
 #          chmod +x /usr/local/bin/*.sh
 #        * set DEBUG to true in config.conf and run it in simulation mode
+#        * INFO: this script does NOT wake any devices
 #        * box_begin, box_line, box_value and box_end functions do nothing when DEBUG is false 
+#
 
 set -euo pipefail
 
@@ -26,14 +28,15 @@ else
     exit 1
 fi
 
-# --- Initialisation JSON ---
-JSON_TEMP=$(jq -n '{}')
-JSON_SYSTEM=$(jq -n '{}')
-
 box_begin "System metrics collection"
 
-if [[ "$PUSH_SYSTEM" == "true" ]]; then
+if [[ "${PUSH_SYSTEM:-false}" == "true" ]]; then
+
     box_line "INFO: System metrics publishing is enabled (PUSH_SYSTEM == true)"    
+
+    # --- Initialisation JSON ---
+    JSON_TEMP=$(jq -n '{}')
+    JSON_SYSTEM=$(jq -n '{}')
 
     # --- 1. CPU Temperature ---
     CPU_TEMP=$(sensors -j | jq -r '."coretemp-isa-0000"?["Package id 0"]?["temp1_input"] // empty')

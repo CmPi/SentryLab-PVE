@@ -5,11 +5,13 @@
 # @author CmPi <cmpi@webe.fr>
 # @brief Collects NVMe wear levels and publishes to MQTT
 # @date 2025-12-29
-# @version 1.0.362.4
+# @version 1.0.362.5
 # @usage Run periodically (e.g., every hour via cron or systemd timer)
-# @notes make it executable as usual
-#        chmod +x /usr/local/bin/sentrylab/wear.sh
-#        WARNING: This script uses smartctl which WAKES sleeping drives
+# @notes * make it executable as usual
+#          chmod +x /usr/local/bin/sentrylab/wear.sh
+#        * set DEBUG to true in config.conf and run it in simulation mode
+#        * WARNING: This script uses smartctl which WAKES sleeping drives
+#        * box_begin, box_line, box_value and box_end functions do nothing when DEBUG is false
 #
 
 set -euo pipefail
@@ -28,9 +30,9 @@ fi
 
 box_begin "NVMe Wear Collection"
 
-if [[ "$PUSH_NVME_WEAR" == "true" ]]; then
-    box_line "INFO: NVMe wear metrics publishing is enabled (PUSH_NVME_WEAR == true)"    
+if [[ "${PUSH_NVME_WEAR:-false}" == "true" ]]; then
 
+    box_line "INFO: NVMe wear metrics publishing is enabled (PUSH_NVME_WEAR == true)"    
 
     # --- Initialisation JSON ---
     JSON=$(jq -n '{}')

@@ -69,6 +69,9 @@ CSV_POOLS_HDR=""
 CSV_POOLS_DATA=""
 CSV_POOLS_HDR_ADDED=false
 
+CSV_DISKS_HDR=""
+CSV_DISKS_DATA=""
+
 # --- CSVs for IA dashboard generation ---
 CSV_SYSTEM_HDR=""
 CSV_SYSTEM_DATA=""

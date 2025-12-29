@@ -10,6 +10,8 @@
 # @notes * make it executable as usual using the command:
 #          chmod +x /usr/local/bin/*.sh
 #        * set DEBUG to true in config.conf and run it in simulation mode
+#        * INFO: this script does NOT wake sleeping drives
+#        * box_begin, box_line, box_value and box_end functions do nothing when DEBUG is false
 #
 
 set -euo pipefail
@@ -26,13 +28,14 @@ else
     exit 1
 fi
 
-# --- Initialisation JSON ---
-JSON=$(jq -n '{}')
-
 box_begin "NVMe Temperature Collection"
 
-if [[ "$PUSH_SYSTEM" == "true" ]]; then
-    box_line "INFO: System metrics publishing is enabled (PUSH_SYSTEM == true)"    
+if [[ "${PUSH_NVME_TEMP:-false}" == "true" ]]; then
+ 
+    box_line "INFO: NVMe temperature metrics publishing is enabled (PUSH_NVME_TEMP == true)"    
+
+    # --- Initialisation JSON ---
+    JSON=$(jq -n '{}')
 
     # --- 3. NVMe Temperatures ---
     for hw_path in /sys/class/hwmon/hwmon*; do
