@@ -128,7 +128,7 @@ for service in "$SYSTEMD_LIVE"/sentrylab*.service; do
     fi
 done
 
-// Enable timers, capturing output from systemctl enable
+# Enable timers, capturing output from systemctl enable
 for timer in "$SYSTEMD_LIVE"/sentrylab*.timer; do
     if [ -f "$timer" ]; then
         timer_name=$(basename "$timer")
