@@ -634,7 +634,13 @@ box_line() {
     local input="${1-}"
     local width="${2-$BOX_WIDTH}"
     local color_override="${3-}"
-    [[ ! "$width" =~ ^[0-9]+$ ]] && width=$BOX_WIDTH
+    # If width is non-numeric, treat it as a color override for convenience
+    if [[ ! "$width" =~ ^[0-9]+$ ]]; then
+        if [[ -z "$color_override" && -n "$width" ]]; then
+            color_override="$width"
+        fi
+        width=$BOX_WIDTH
+    fi
     local inner=$((width - 4))
 
     # Colors
@@ -727,7 +733,6 @@ display_config() {
         box_value "Status" "ERROR: Disabled or directory missing"
     fi
     box_end
-        padded_line=$(pad_to_width "$line" "$inner")
 
     box_begin "Monitoring Features"
     box_value "System Monitoring" "${PUSH_SYSTEM:-false}"
