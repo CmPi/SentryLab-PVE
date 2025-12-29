@@ -80,14 +80,13 @@ CSV_DISKS_HDR=""
 CSV_DISKS_DATA=""
 
 # --- CSVs for IA dashboard generation ---
-CSV_SYSTEM_HDR=""
+CSV_SYSTEM_HDR="HomeAssistant entity ID,Metric name in english,Metric name in french"
 CSV_SYSTEM_DATA=""
 
 if [[ "$PUSH_SYSTEM" == "true" ]]; then
 
     box_begin "System Sensors"
 
-    CSV_SYSTEM_HDR="HomeAssistant entity ID,Metric name in english,Metric name in french"
 
     # --- 1. Register CPU sensor ---
 
@@ -731,6 +730,9 @@ box_end
 
 if [[ -n "${OUTPUT_CSV_DIR:-}" ]]; then
     box_begin "CSV EXPORTS"
+    # Show a simple data row count (excluding header) for System CSV
+    sys_rows=$(printf '%s\n' "$CSV_SYSTEM_DATA" | sed '/^$/d' | wc -l)
+    box_line "System rows: ${sys_rows}"
     box_value "System"   "$(write_csv "system.csv" "$CSV_SYSTEM_HDR" "$CSV_SYSTEM_DATA")"
     box_value "ZFS"      "$(write_csv "zfs.csv" "$CSV_POOLS_HDR" "$CSV_POOLS_DATA")"
     box_value "Standard" "$(write_csv "standard_disks.csv" "$CSV_DISKS_HDR" "$CSV_DISKS_DATA")"
