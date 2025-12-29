@@ -83,6 +83,7 @@ if [[ "$PUSH_SYSTEM" == "true" ]]; then
 
     # include hostname in HA ID (to avoid conflicts if other NAS or Workstations report their CPU temperature)
 
+    box_line "CPU temperature"
     HA_ID="${HOST_NAME}_cpu_temp"
     HA_LABEL="Température du CPU"
     CFG_TOPIC="homeassistant/sensor/${HA_ID}/config"
@@ -104,11 +105,12 @@ if [[ "$PUSH_SYSTEM" == "true" ]]; then
     )
     mqtt_publish_retain "$CFG_TOPIC" "$PAYLOAD"
     CSV_SYSTEM_DATA+="${HA_ID},CPU temperature,Température du CPU"$'\n'
-    box_line "CPU temperature registered"
 
     # --- 2. Register Chassis temperature sensor (not CPU related, I know) ---
 
     # include hostname in HA ID (to avoid conflicts if other NAS or Workstations report their CPU temperature)
+
+    box_line "Chassis temperature"
 
     HA_ID="${HOST_NAME}_chassis_temp"
     HA_LABEL="Température du chassis"
@@ -138,7 +140,6 @@ if [[ "$PUSH_SYSTEM" == "true" ]]; then
     )
     mqtt_publish_retain "$CFG_TOPIC" "$PAYLOAD"
     CSV_SYSTEM_DATA+="${HA_ID},Chassis temperature,Température du chassis"$'\n'
-    box_line "Chassis temperature registered"
 
     # --- CPU Cores (Static) ---
     if command -v nproc >/dev/null; then

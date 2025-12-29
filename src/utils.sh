@@ -374,74 +374,97 @@ box_begin() {
     printf "┐\n"
 }
 
-# Format a line inside a box with automatic padding
-# Usage: box_line "Label:" "Value" [width]
-# Format one or more lines inside a box if the content is too long
-# Usage: box_line "Label:" "Value" [width]
-# Display a line in a box with color support and perfect alignment
-# Usage: box_line "Label:" "Value" [width]
-# Affiche une ligne stylisée avec gestion des couleurs et de l'alignement
+# retourne la largeur affichée réelle (Unicode-safe)
+str_width() {
+    local s="$1"
+    local w=0 c
+    while IFS= read -r -n1 c; do
+        [[ -z "$c" ]] && continue
+        LC_ALL=C printf '%s' "$c" | grep -q '[ -~]' && ((w++)) || ((w+=2))
+    done <<< "$s"
+    echo "$w"
+}
+
+wrap_text() {
+    local text="$1"
+    local max="$2"
+    local line word out=""
+
+    for word in $text; do
+        local test="$line${line:+ }$word"
+        if (( $(str_width "$test") <= max )); then
+            line="$test"
+        else
+            out+="$line"$'\n'
+            line="$word"
+        fi
+    done
+
+    out+="$line"
+    printf '%s' "$out"
+}
+
+strip_ansi() {
+    local s="$1"
+    while [[ "$s" =~ $'\e''\[[0-9;]*m' ]]; do
+        s="${s/${BASH_REMATCH[0]}/}"
+    done
+    printf '%s' "$s"
+}
+
 box_line() {
     [[ "${DEBUG:-false}" != "true" ]] && return 0
-    
-    local input="${1:-}"
+
+    local input="$1"
     local width=${2:-$BOX_WIDTH}
     [[ ! "$width" =~ ^[0-9]+$ ]] && width=80
-    local max_in=$((width - 4))
+    local max=$((width - 4))
 
-    # Define Colors
+    # Colors
     local RED='\033[31m'
     local GRN='\033[32m'
     local YEL='\033[33m'
-    local CYA='\033[36m'  # Cyan for general values
+    local CYA='\033[36m'
     local CLR='\033[0m'
 
-    local text=""
-    
-    if [[ "$input" == *": "* ]]; then
-        local label="${input%%: *}: "
-        local value="${input#*: }"
-        
-        # 1. Check for specific status colors first
-        if [[ "$value" == "ERROR"* || "$value" == "false" ]]; then 
-            value="${RED}${value}${CLR}"
-        elif [[ "$value" == "INFO"* || "$value" == "true" || "$value" == "Directory exists" ]]; then 
-            value="${GRN}${value}${CLR}"
-        elif [[ "$value" == "SKIP"* || "$value" =~ "Disabled" ]]; then 
-            value="${YEL}${value}${CLR}"
+    local raw line colored plain wrapped vis pad
+
+    while IFS= read -r raw; do
+
+        # ---- coloring ----
+        if [[ "$raw" == *": "* ]]; then
+            local label="${raw%%: *}: "
+            local value="${raw#*: }"
+
+            if [[ "$value" == ERROR* || "$value" == false ]]; then
+                value="${RED}${value}${CLR}"
+            elif [[ "$value" == INFO* || "$value" == true || "$value" == "Directory exists" ]]; then
+                value="${GRN}${value}${CLR}"
+            elif [[ "$value" == SKIP* || "$value" == *Disabled* ]]; then
+                value="${YEL}${value}${CLR}"
+            else
+                value="${CYA}${value}${CLR}"
+            fi
+            colored="${label}${value}"
         else
-            # 2. DEFAULT COLOR for any other value (e.g., IP addresses, paths, hostnames)
-            value="${CYA}${value}${CLR}"
+            colored="$raw"
+            [[ "$colored" == ERROR* ]] && colored="${RED}${colored}${CLR}"
+            [[ "$colored" == INFO*  ]] && colored="${GRN}${colored}${CLR}"
         fi
-        text="${label}${value}"
-    else
-        # For informative text without a colon, apply keywords or keep plain
-        text="$input"
-        if [[ "$text" == "ERROR"* ]]; then text="${RED}${text}${CLR}"
-        elif [[ "$text" == "INFO"* ]]; then text="${GRN}${text}${CLR}"
-        fi
-    fi
 
-    # Precise Strip for Length Calculation
-    local plain_content
-    plain_content=$(echo -ne "$text" | sed 's/\x1b\[[0-9;]*m//g')
-    local total_len=${#plain_content}
+        plain=$(strip_ansi "$colored")
+        wrapped=$(wrap_text "$plain" "$max")
 
-    # Render Loop
-    while [[ ${#plain_content} -gt 0 ]]; do
-        local chunk_plain="${plain_content:0:$max_in}"
-        local padding=$((max_in - ${#chunk_plain}))
-        local pad_str=$(printf "%*s" "$padding" "")
+        # ---- render ----
+        while IFS= read -r line; do
+            vis=$(str_width "$line")
+            pad=$((max - vis))
+            printf "│ %b%*s │\n" \
+                "${colored%%"$plain"*}$line${colored#"$plain"}" \
+                "$pad" ""
+        done <<< "$wrapped"
 
-        if [[ ${#plain_content} -eq $total_len ]]; then
-            printf "│ %b%s │\n" "$text" "$pad_str"
-        else
-            printf "│ %s%s │\n" "$chunk_plain" "$pad_str"
-        fi
-        
-        plain_content="${plain_content:$max_in}"
-        [[ -z "$plain_content" ]] && break
-    done
+    done <<< "$input"
 }
 
 
