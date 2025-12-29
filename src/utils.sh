@@ -317,21 +317,6 @@ check_dependencies() {
 
 BOX_WIDTH=80
 
-strip_colors() {
-    local text="${1:-}"
-    [[ -z "$text" ]] && return 0
-    local clean="${text//[$'\e']\[[0-9;]*m/}"
-    printf '%s' "$clean"
-}
-
-
-strip_ansi() {
-    local s="$1"
-    while [[ "$s" =~ $'\e''\[[0-9;]*m' ]]; do
-        s="${s/${BASH_REMATCH[0]}/}"
-    done
-    printf '%s' "$s"
-}
 
 
 # Titre Majeur (Bordure double, centré)
@@ -347,6 +332,22 @@ box_title() {
     printf "╔"; printf '═%.0s' $(seq 1 $inner); printf "╗\n"
     printf "║%*s%s%*s║\n" "$l_pad" "" "$title" "$r_pad" ""
     printf "╚"; printf '═%.0s' $(seq 1 $inner); printf "╝\n"
+}
+
+strip_colors() {
+    local text="${1:-}"
+    [[ -z "$text" ]] && return 0
+    local clean="${text//[$'\e']\[[0-9;]*m/}"
+    printf '%s' "$clean"
+}
+
+
+strip_ansi() {
+    local s="$1"
+    while [[ "$s" =~ $'\e''\[[0-9;]*m' ]]; do
+        s="${s/${BASH_REMATCH[0]}/}"
+    done
+    printf '%s' "$s"
 }
 
 # Begin a box section with a title (Visible only in DEBUG mode)
@@ -455,8 +456,6 @@ box_line() {
     local CYA='\033[36m'
     local CLR='\033[0m'
 
-    local raw phys_line colored plain wrapped vis pad
-
     # --- cas input vide ---
     if [[ -z "$input" ]]; then
         printf "│ %*s │\n" "$max" ""
@@ -464,43 +463,49 @@ box_line() {
     fi
 
     # --- lire ligne par ligne ---
-    while IFS= read -r raw; do
-        # ---- coloration ----
+    while IFS= read -r raw || [[ -n "$raw" ]]; do
+        # ---- déterminer la couleur ----
+        local color="" label value
         if [[ "$raw" == *": "* ]]; then
-            local label="${raw%%: *}: "
-            local value="${raw#*: }"
+            label="${raw%%: *}: "
+            value="${raw#*: }"
 
             if [[ "$value" == ERROR* || "$value" == false ]]; then
-                value="${RED}${value}${CLR}"
+                color="$RED"
             elif [[ "$value" == INFO* || "$value" == true || "$value" == "Directory exists" ]]; then
-                value="${GRN}${value}${CLR}"
+                color="$GRN"
             elif [[ "$value" == SKIP* || "$value" == *Disabled* ]]; then
-                value="${YEL}${value}${CLR}"
+                color="$YEL"
             else
-                value="${CYA}${value}${CLR}"
+                color="$CYA"
             fi
-            colored="${label}${value}"
         else
-            colored="$raw"
-            [[ "$colored" == ERROR* ]] && colored="${RED}${colored}${CLR}"
-            [[ "$colored" == INFO*  ]] && colored="${GRN}${colored}${CLR}"
+            if [[ "$raw" == ERROR* ]]; then
+                color="$RED"
+            elif [[ "$raw" == INFO* ]]; then
+                color="$GRN"
+            fi
         fi
 
-        plain=$(strip_ansi "$colored")
-        wrapped=$(wrap_text "$plain" "$max")
+        # Wrapper le texte brut
+        local wrapped=$(wrap_text "$raw" "$max")
 
         # ---- rendu physique ligne par ligne ----
-        while IFS= read -r phys_line; do
-            vis=$(str_width "$phys_line")
-            pad=$((max - vis))
-            printf "│ %b%*s │\n" \
-                "${colored%%"$plain"*}$phys_line${colored#"$plain"}" \
-                "$pad" ""
+        while IFS= read -r phys_line || [[ -n "$phys_line" ]]; do
+            local vis=$(str_width "$phys_line")
+            local pad=$((max - vis))
+            [[ $pad -lt 0 ]] && pad=0
+            
+            # Appliquer la couleur à toute la ligne
+            if [[ -n "$color" ]]; then
+                printf "│ %b%b%b%*s │\n" "$color" "$phys_line" "$CLR" "$pad" ""
+            else
+                printf "│ %b%*s │\n" "$phys_line" "$pad" ""
+            fi
         done <<< "$wrapped"
 
     done <<< "$input"
 }
-
 
 
 
