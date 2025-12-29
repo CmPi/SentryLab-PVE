@@ -91,7 +91,7 @@ if [[ "$PUSH_SYSTEM" == "true" ]]; then
     PAYLOAD=$(jq -n \
         --arg name "$HA_LABEL" \
         --arg unique_id "$HA_ID" \
-        --arg stat_t "$SYSTEM_TOPIC" \
+        --arg stat_t "$TEMP_TOPIC" \
         --arg val_tpl '{{ value_json.cpu }}' \
         --arg availability "$AVAIL_TOPIC" \
         --argjson dev "$DEVICE_JSON" \
@@ -122,7 +122,7 @@ if [[ "$PUSH_SYSTEM" == "true" ]]; then
     PAYLOAD=$(jq -n \
         --arg name "$HA_LABEL" \
         --arg unique_id "$HA_ID" \
-        --arg stat_t "$SYSTEM_TOPIC" \
+        --arg stat_t "$TEMP_TOPIC" \
         --arg val_tpl '{{ value_json.chassis }}' \
         --arg av_t "$AVAIL_TOPIC" \
         --argjson dev "$DEVICE_JSON" \

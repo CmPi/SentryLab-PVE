@@ -72,10 +72,10 @@ if [[ "$PUSH_SYSTEM" == "true" ]]; then
             fi
             key="nvme_${SN_LOWER}_${label}"
             JSON=$(jq --arg k "$key" --arg v "$temp_val" '. + {($k): ($v | tonumber)}' <<<"$JSON")
-            log_debug "  $nvme_dev $label (temp$temp_num): $temp_val°C"
+            box_value "$nvme_dev $label (temp$temp_num)" "$temp_val°C"
             temp_count=$((temp_count + 1))
         done
-        log_debug "  Found $temp_count temperature sensor(s) for $nvme_dev"
+        box_line "INFO: found $temp_count temperature sensor(s) for $nvme_dev"
     done
 
     # --- Publish JSON to MQTT (No-Retain) ---

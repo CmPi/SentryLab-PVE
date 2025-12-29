@@ -519,9 +519,19 @@ pad_to_width() {
     local width
     width=$(str_width "$text")
     local out="$text"
+    # Pad if below target
     while (( width < target )); do
         out+=" "
         ((width++))
+    done
+    # Trim if above target (handles multibyte width discrepancies with é, °, etc.)
+    while (( width > target )); do
+        if [[ "$out" == *" " ]]; then
+            out="${out% }"
+            ((width--))
+        else
+            break
+        fi
     done
     printf '%s' "$out"
 }
