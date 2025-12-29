@@ -438,7 +438,7 @@ for hw_path in /sys/class/hwmon/hwmon*; do
             )
             mqtt_publish_retain "$CFG_TOPIC" "$PAYLOAD"
             CSV_LINES+="${HOST_NAME}_${HA_ID},${label},\"${HA_LABEL}\",${SN},${NVME_SLOT_ID}"$'\n'
-            log_debug "  Registered NVMe temperature sensor: $label"
+            box_line "Registered NVMe temperature sensor: $label"
         done
     fi
 
