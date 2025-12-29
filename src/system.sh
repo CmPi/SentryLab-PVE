@@ -73,6 +73,60 @@ if [[ "$PUSH_SYSTEM" == "true" ]]; then
         box_line "WARNING: Could not retrieve CPU load average"
     fi
 
+    # --- Memory Usage ---
+    if [[ -f /proc/meminfo ]]; then
+        MEM_TOTAL=$(awk '/^MemTotal:/ {print int($2/1024)}' /proc/meminfo)
+        MEM_AVAILABLE=$(awk '/^MemAvailable:/ {print int($2/1024)}' /proc/meminfo)
+        MEM_USED=$((MEM_TOTAL - MEM_AVAILABLE))
+        MEM_PERCENT=$((MEM_USED * 100 / MEM_TOTAL))
+        JSON_SYSTEM=$(jq --argjson v "$MEM_TOTAL" '. + {mem_total_mb: $v}' <<<"$JSON_SYSTEM")
+        JSON_SYSTEM=$(jq --argjson v "$MEM_USED" '. + {mem_used_mb: $v}' <<<"$JSON_SYSTEM")
+        JSON_SYSTEM=$(jq --argjson v "$MEM_PERCENT" '. + {mem_usage_percent: $v}' <<<"$JSON_SYSTEM")
+        box_value "memory total" "${MEM_TOTAL}MB"
+        box_value "memory used" "${MEM_USED}MB (${MEM_PERCENT}%)"
+    else
+        box_line "WARNING: Could not retrieve memory information"
+    fi
+
+    # --- Thermal Throttling Count ---
+    THROTTLE_COUNT=0
+    for cpu in /sys/devices/system/cpu/cpu*/thermal_throttle/; do
+        if [[ -d "$cpu" ]]; then
+            for file in "$cpu"core_throttle_count core_power_limit_count; do
+                if [[ -f "$file" ]]; then
+                    count=$(cat "$file" 2>/dev/null || echo 0)
+                    THROTTLE_COUNT=$((THROTTLE_COUNT + count))
+                fi
+            done
+        fi
+    done
+    JSON_SYSTEM=$(jq --argjson v "$THROTTLE_COUNT" '. + {throttle_count: $v}' <<<"$JSON_SYSTEM")
+    if [[ $THROTTLE_COUNT -gt 0 ]]; then
+        box_value "thermal throttle events" "$THROTTLE_COUNT" "YELLOW"
+    else
+        box_value "thermal throttle events" "$THROTTLE_COUNT"
+    fi
+
+    # --- CPU Frequency ---
+    if command -v lscpu >/dev/null; then
+        CPU_MAX_FREQ=$(lscpu | grep "max MHz" | awk '{print $NF}' | cut -d. -f1)
+        if [[ -n "$CPU_MAX_FREQ" ]]; then
+            JSON_SYSTEM=$(jq --argjson v "$CPU_MAX_FREQ" '. + {cpu_max_freq_mhz: $v}' <<<"$JSON_SYSTEM")
+            box_value "cpu max frequency" "${CPU_MAX_FREQ}MHz"
+        fi
+    fi
+    if [[ -f /proc/cpuinfo ]]; then
+        CPU_CUR_FREQ=$(grep "cpu MHz" /proc/cpuinfo | head -1 | awk '{print int($NF)}')
+        if [[ -n "$CPU_CUR_FREQ" ]]; then
+            JSON_SYSTEM=$(jq --argjson v "$CPU_CUR_FREQ" '. + {cpu_current_freq_mhz: $v}' <<<"$JSON_SYSTEM")
+            if [[ -n "${CPU_MAX_FREQ:-}" ]] && [[ $CPU_CUR_FREQ -lt $((CPU_MAX_FREQ * 95 / 100)) ]]; then
+                box_value "cpu current frequency" "${CPU_CUR_FREQ}MHz (throttled)" "YELLOW"
+            else
+                box_value "cpu current frequency" "${CPU_CUR_FREQ}MHz"
+            fi
+        fi
+    fi
+
     # --- Publish JSONs to respective topics to MQTT (No-Retain) ---
     box_line ""
     box_line "Published system metrics to MQTT topics" "$BOX_WIDTH" "MAGENTA"

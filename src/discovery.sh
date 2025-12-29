@@ -5,7 +5,7 @@
 # @author CmPi <cmpi@webe.fr>
 # @brief Publie les capteurs du NAS vers Home Assistant pour la découverte automatique
 # @date 2025-12-28
-# @version 1.1.361
+# @version 1.0.362.2
 # @usage à lancer au boot pour déclarer les capteurs Home Assistant
 # @notes * make it executable as usual using the command:
 #          chmod +x /usr/local/bin/*.sh
@@ -181,6 +181,108 @@ if [[ "$PUSH_SYSTEM" == "true" ]]; then
         CSV_SYSTEM_DATA+="${HA_ID},Load (5m),Charge CPU (5 min)"$'\n'
         box_line "CPU Load (5mn): Registered"
     fi
+
+    # --- Memory Total ---
+    HA_ID="${HOST_NAME}_mem_total"
+    HA_LABEL="Mémoire totale"
+    CFG_TOPIC="homeassistant/sensor/${HA_ID}/config"
+    PAYLOAD=$(jq -n \
+        --arg name "$HA_LABEL" \
+        --arg unique_id "$HA_ID" \
+        --arg stat_t "$SYSTEM_TOPIC" \
+        --arg val_tpl '{{ value_json.mem_total_mb }}' \
+        --arg icon "mdi:memory" \
+        --arg av_t "$AVAIL_TOPIC" \
+        --argjson dev "$DEVICE_JSON" \
+        '{name: $name, unique_id: $unique_id, object_id: $unique_id, state_topic: $stat_t, value_template: $val_tpl, unit_of_measurement: "MB", icon: $icon, availability_topic: $av_t, dev: $dev}')
+    mqtt_publish_retain "$CFG_TOPIC" "$PAYLOAD"
+    CSV_SYSTEM_DATA+="${HA_ID},Memory Total,Mémoire totale"$'\n'
+    box_line "Memory Total: Registered"
+
+    # --- Memory Used ---
+    HA_ID="${HOST_NAME}_mem_used"
+    HA_LABEL="Mémoire utilisée"
+    CFG_TOPIC="homeassistant/sensor/${HA_ID}/config"
+    PAYLOAD=$(jq -n \
+        --arg name "$HA_LABEL" \
+        --arg unique_id "$HA_ID" \
+        --arg stat_t "$SYSTEM_TOPIC" \
+        --arg val_tpl '{{ value_json.mem_used_mb }}' \
+        --arg icon "mdi:memory" \
+        --arg av_t "$AVAIL_TOPIC" \
+        --argjson dev "$DEVICE_JSON" \
+        '{name: $name, unique_id: $unique_id, object_id: $unique_id, state_topic: $stat_t, value_template: $val_tpl, unit_of_measurement: "MB", icon: $icon, availability_topic: $av_t, dev: $dev}')
+    mqtt_publish_retain "$CFG_TOPIC" "$PAYLOAD"
+    CSV_SYSTEM_DATA+="${HA_ID},Memory Used,Mémoire utilisée"$'\n'
+    box_line "Memory Used: Registered"
+
+    # --- Memory Usage Percentage ---
+    HA_ID="${HOST_NAME}_mem_usage_percent"
+    HA_LABEL="Pourcentage mémoire"
+    CFG_TOPIC="homeassistant/sensor/${HA_ID}/config"
+    PAYLOAD=$(jq -n \
+        --arg name "$HA_LABEL" \
+        --arg unique_id "$HA_ID" \
+        --arg stat_t "$SYSTEM_TOPIC" \
+        --arg val_tpl '{{ value_json.mem_usage_percent }}' \
+        --arg icon "mdi:percent" \
+        --arg av_t "$AVAIL_TOPIC" \
+        --argjson dev "$DEVICE_JSON" \
+        '{name: $name, unique_id: $unique_id, object_id: $unique_id, state_topic: $stat_t, value_template: $val_tpl, unit_of_measurement: "%", icon: $icon, availability_topic: $av_t, dev: $dev}')
+    mqtt_publish_retain "$CFG_TOPIC" "$PAYLOAD"
+    CSV_SYSTEM_DATA+="${HA_ID},Memory Usage %,Pourcentage mémoire"$'\n'
+    box_line "Memory Usage %: Registered"
+
+    # --- Thermal Throttle Count ---
+    HA_ID="${HOST_NAME}_throttle_count"
+    HA_LABEL="Événements de limitation thermique"
+    CFG_TOPIC="homeassistant/sensor/${HA_ID}/config"
+    PAYLOAD=$(jq -n \
+        --arg name "$HA_LABEL" \
+        --arg unique_id "$HA_ID" \
+        --arg stat_t "$SYSTEM_TOPIC" \
+        --arg val_tpl '{{ value_json.throttle_count }}' \
+        --arg icon "mdi:thermometer-alert" \
+        --arg av_t "$AVAIL_TOPIC" \
+        --argjson dev "$DEVICE_JSON" \
+        '{name: $name, unique_id: $unique_id, object_id: $unique_id, state_topic: $stat_t, value_template: $val_tpl, icon: $icon, availability_topic: $av_t, dev: $dev}')
+    mqtt_publish_retain "$CFG_TOPIC" "$PAYLOAD"
+    CSV_SYSTEM_DATA+="${HA_ID},Throttle Events,Événements de limitation thermique"$'\n'
+    box_line "Thermal Throttle Count: Registered"
+
+    # --- CPU Max Frequency ---
+    HA_ID="${HOST_NAME}_cpu_max_freq"
+    HA_LABEL="Fréquence CPU max"
+    CFG_TOPIC="homeassistant/sensor/${HA_ID}/config"
+    PAYLOAD=$(jq -n \
+        --arg name "$HA_LABEL" \
+        --arg unique_id "$HA_ID" \
+        --arg stat_t "$SYSTEM_TOPIC" \
+        --arg val_tpl '{{ value_json.cpu_max_freq_mhz }}' \
+        --arg icon "mdi:speedometer" \
+        --arg av_t "$AVAIL_TOPIC" \
+        --argjson dev "$DEVICE_JSON" \
+        '{name: $name, unique_id: $unique_id, object_id: $unique_id, state_topic: $stat_t, value_template: $val_tpl, unit_of_measurement: "MHz", icon: $icon, availability_topic: $av_t, dev: $dev}')
+    mqtt_publish_retain "$CFG_TOPIC" "$PAYLOAD"
+    CSV_SYSTEM_DATA+="${HA_ID},CPU Max Frequency,Fréquence CPU max"$'\n'
+    box_line "CPU Max Frequency: Registered"
+
+    # --- CPU Current Frequency ---
+    HA_ID="${HOST_NAME}_cpu_current_freq"
+    HA_LABEL="Fréquence CPU actuelle"
+    CFG_TOPIC="homeassistant/sensor/${HA_ID}/config"
+    PAYLOAD=$(jq -n \
+        --arg name "$HA_LABEL" \
+        --arg unique_id "$HA_ID" \
+        --arg stat_t "$SYSTEM_TOPIC" \
+        --arg val_tpl '{{ value_json.cpu_current_freq_mhz }}' \
+        --arg icon "mdi:speedometer" \
+        --arg av_t "$AVAIL_TOPIC" \
+        --argjson dev "$DEVICE_JSON" \
+        '{name: $name, unique_id: $unique_id, object_id: $unique_id, state_topic: $stat_t, value_template: $val_tpl, unit_of_measurement: "MHz", icon: $icon, availability_topic: $av_t, dev: $dev}')
+    mqtt_publish_retain "$CFG_TOPIC" "$PAYLOAD"
+    CSV_SYSTEM_DATA+="${HA_ID},CPU Current Frequency,Fréquence CPU actuelle"$'\n'
+    box_line "CPU Current Frequency: Registered"
 
     box_end
 

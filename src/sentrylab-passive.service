@@ -8,7 +8,7 @@
 
 [Unit]
 Description=SentryLab passive sensors polling (no disk wake)
-After=network.target
+After=network.target sentrylab-discovery.service
 
 [Service]
 Type=oneshot
