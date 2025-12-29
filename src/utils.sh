@@ -145,7 +145,7 @@ mqtt_publish_retain() {
     fi
 
     if [[ "${DEBUG:-false}" == "true" ]]; then
-        box_line "Would publish (RETAIN)"
+        box_line "SIMULATED - Would publish (RETAIN)"
         box_value "Topic" "$topic"
         box_value "Payload" "${payload}"
         return 0
@@ -154,28 +154,18 @@ mqtt_publish_retain() {
     if [[ "${INTERACTIVE:-false}" == "true" ]]; then
         box_value "Topic" "$topic"
         box_value "Payload" "${payload:0:100}"
-        box_value "BROKER" "$BROKER"
-        box_value "PORT" "$PORT"
-        box_value "USER" "$USER"
-        box_value "MQTT_QOS" "${MQTT_QOS:-1}"
-
         # Interactive mode: capture stderr to display errors
         local mqtt_err
         mqtt_err=$(mktemp)
         if mosquitto_pub -h "$BROKER" -p "$PORT" \
                          -u "$USER" -P "$PASS" \
                          -t "$topic" -m "$payload" -r -q "${MQTT_QOS:-1}" 2>"$mqtt_err"; then
-            box_line "Published successfully" "GREEN"
-            # log_debug "Published (Retain) to $topic"
-
-
-            box_line "after log_debug"
+            box_line "INFO: Published successfully"
             rm -f "$mqtt_err"
-            box_line "before return 0"
             return 0
         else
             local err_code=$?
-            box_line "ERROR: Failed to publish (retain) - exit code: $err_code" "RED"
+            box_line "ERROR: Failed to publish (retain) - exit code: $err_code"
             if [[ -s "$mqtt_err" ]]; then
                 box_line "mosquitto_pub error output:" "YELLOW"
                 while IFS= read -r line; do

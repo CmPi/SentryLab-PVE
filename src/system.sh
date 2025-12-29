@@ -134,7 +134,7 @@ if [[ "${PUSH_SYSTEM:-false}" == "true" ]]; then
 
     # --- Publish JSONs to respective topics to MQTT (No-Retain) ---
     box_line ""
-    box_line "Published system metrics to MQTT topics" "$BOX_WIDTH" "MAGENTA"
+    box_line "Published system metrics to MQTT topics" "MAGENTA"
     mqtt_publish_no_retain "$TEMP_TOPIC" "$JSON_TEMP"
     mqtt_publish_no_retain "$SYSTEM_TOPIC" "$JSON_SYSTEM"
 
