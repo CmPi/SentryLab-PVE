@@ -58,6 +58,8 @@ if [[ "${PUSH_SYSTEM:-false}" == "true" ]]; then
         box_line "WARNING: NAS ambient temperature could not be retrieved"
     fi
 
+    box_line "Cores"
+
     # --- CPU Cores (Static) ---
     if command -v nproc >/dev/null; then
         CPU_CORES=$(nproc)
@@ -66,6 +68,9 @@ if [[ "${PUSH_SYSTEM:-false}" == "true" ]]; then
     else
         box_line "WARNING: Could not determine number of CPU cores"
     fi
+
+    box_line "Load"
+
 
     # --- CPU Load Average (5 min) ---
     if [[ -f /proc/loadavg ]]; then
