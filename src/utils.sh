@@ -166,7 +166,9 @@ mqtt_publish_retain() {
                          -u "$USER" -P "$PASS" \
                          -t "$topic" -m "$payload" -r -q "${MQTT_QOS:-1}" 2>"$mqtt_err"; then
             box_line "Published successfully" "GREEN"
-            log_debug "Published (Retain) to $topic"
+            # log_debug "Published (Retain) to $topic"
+
+
             box_line "after log_debug"
             rm -f "$mqtt_err"
             box_line "before return 0"
@@ -739,19 +741,16 @@ box_value() {
 
 
 # Print arbitrary text lines inside the box. Uses a single color chosen from keywords or explicit.
-# Usage: box_line "Some text" [width] [color_name]
+# Usage: box_line "Some text" [color_name] [width]
 # Color names: RED, GREEN, YELLOW, BLUE, MAGENTA, CYAN, WHITE
-# If no color specified, auto-detects based on keywords (ERROR, INFO, SKIP, etc.)
+# If no color specified, auto-detect based on keywords (ERROR, INFO, SKIP, etc.)
 box_line() {
     [[ "${DEBUG:-false}" != "true" && "${INTERACTIVE:-false}" != "true" ]] && return 0
     local input="${1-}"
-    local width="${2-$BOX_WIDTH}"
-    local color_override="${3-}"
-    # If width is non-numeric, treat it as a color override for convenience
-    if [[ ! "$width" =~ ^[0-9]+$ ]]; then
-        if [[ -z "$color_override" && -n "$width" ]]; then
-            color_override="$width"
-        fi
+    local color_override="${2-}"
+    local width="${3-$BOX_WIDTH}"
+    # If width is non-numeric or missing, use default
+    if [[ -z "$width" || ! "$width" =~ ^[0-9]+$ ]]; then
         width=$BOX_WIDTH
     fi
     local inner=$((width - 4))
