@@ -317,8 +317,6 @@ check_dependencies() {
 
 BOX_WIDTH=80
 
-
-
 # Titre Majeur (Bordure double, centré)
 box_title() {
     [[ "${DEBUG:-false}" != "true" ]] && return 0
@@ -334,19 +332,10 @@ box_title() {
     printf "╚"; printf '═%.0s' $(seq 1 $inner); printf "╝\n"
 }
 
-strip_colors() {
-    local text="${1:-}"
-    [[ -z "$text" ]] && return 0
-    local clean="${text//[$'\e']\[[0-9;]*m/}"
-    printf '%s' "$clean"
-}
-
-
 strip_ansi() {
     local s="$1"
-    while [[ "$s" =~ $'\e''\[[0-9;]*m' ]]; do
-        s="${s/${BASH_REMATCH[0]}/}"
-    done
+    # Utilise un pattern plus robuste pour les séquences ANSI
+    s="${s//$'\e'\[*([0-9;])m/}"
     printf '%s' "$s"
 }
 
@@ -357,7 +346,7 @@ box_begin() {
     local raw_title="${1:-}"
     local width="${2:-$BOX_WIDTH}"
     # Calculate length based on stripped text to ignore ANSI codes
-    local plain_title=$(strip_colors "$raw_title")
+    local plain_title=$(strip_ansi "$raw_title")
     local title_len=${#plain_title}
     # 1. Handle Empty Title
     if [[ -z "$plain_title" ]]; then
@@ -388,55 +377,85 @@ box_begin() {
 # retourne la largeur affichée réelle (Unicode-safe)
 str_width() {
     local s="$1"
-    local w=0 c
-    while IFS= read -r -n1 c; do
-        [[ -z "$c" ]] && continue
-        LC_ALL=C printf '%s' "$c" | grep -q '[ -~]' && ((w++)) || ((w+=2))
-    done <<< "$s"
+    # D'abord, nettoyer les codes ANSI
+    s=$(strip_ansi "$s")
+    # Compter les caractères en tenant compte de l'UTF-8
+    local w=0
+    local len=${#s}
+    local i=0
+    while ((i < len)); do
+        local c="${s:i:1}"
+        local byte=$(printf '%d' "'$c")
+        # Détection UTF-8 multi-octets
+        if ((byte >= 240)); then
+            # 4 octets (emoji, etc.) - largeur 2
+            ((w += 2))
+            ((i += 4))
+        elif ((byte >= 224)); then
+            # 3 octets (la plupart des caractères CJK) - largeur 2
+            ((w += 2))
+            ((i += 3))
+        elif ((byte >= 192)); then
+            # 2 octets - largeur 1 généralement
+            ((w += 1))
+            ((i += 2))
+        elif ((byte >= 32 && byte <= 126)); then
+            # ASCII imprimable - largeur 1
+            ((w += 1))
+            ((i += 1))
+        else
+            # Autres (contrôle, etc.) - ignorer
+            ((i += 1))
+        fi
+    done
     echo "$w"
 }
 
 wrap_text() {
     local text="$1"
-    local max="${2:-0}"
-    local cur="" word out="" line
+    local max="${2:-80}"
     # Cas chaîne vide
-    [[ -z "$text" ]] && { printf '\n'; return 0; }
-    # On traite ligne par ligne (pour respecter les paragraphes existants)
+    [[ -z "$text" ]] && { echo ""; return 0; }
+    local out=""
+    # Traiter ligne par ligne (pour respecter les sauts de ligne existants)
     while IFS= read -r line || [[ -n "$line" ]]; do
-        # Si on a déjà du contenu et qu'on change de ligne logique, on ajoute un saut
+        # Si on a déjà du contenu, ajouter un saut de ligne
         [[ -n "$out" ]] && out+=$'\n'
-        # Reset cur pour la nouvelle ligne
-        cur=""
-        # Découpage sécurisé des mots (read -a lit dans un tableau)
-        # On utilise <<< pour passer la ligne à read
+        # Si la ligne est vide, la conserver
+        if [[ -z "$line" ]]; then
+            continue
+        fi
+        local cur=""
+        local words=()
+        # Découper en mots (gestion des espaces multiples)
         read -ra words <<< "$line"
         for word in "${words[@]}"; do
+            [[ -z "$word" ]] && continue
             local test_len
             if [[ -n "$cur" ]]; then
-                # Test : "cur + espace + word"
-                # Note: str_width doit gérer les codes couleurs pour être exact
+                # Test avec espace
                 test_len=$(str_width "$cur $word")
             else
-                # Test : "word"
+                # Premier mot
                 test_len=$(str_width "$word")
             fi
-            if (( test_len <= max )); then
-                # Ça rentre : on ajoute
+            if ((test_len <= max)); then
+                # Ça rentre
                 if [[ -n "$cur" ]]; then
                     cur+=" $word"
                 else
                     cur="$word"
                 fi
             else
-                # Ça dépasse : on valide la ligne en cours et on commence la nouvelle
-                # Gestion du cas où un mot seul est plus long que max (on le laisse passer, on ne coupe pas le mot)
-                [[ -n "$cur" ]] && out+="$cur"$'\n'
+                # Ça dépasse : valider la ligne courante
+                if [[ -n "$cur" ]]; then
+                    out+="$cur"$'\n'
+                fi
                 cur="$word"
             fi
         done
-        # Ajouter le reste de la ligne courante
-        out+="$cur"
+        # Ajouter le reste
+        [[ -n "$cur" ]] && out+="$cur"
     done <<< "$text"
     printf '%s' "$out"
 }
