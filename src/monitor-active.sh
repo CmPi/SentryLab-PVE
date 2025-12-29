@@ -24,24 +24,9 @@ fi
 
 box_title "ACTIVE MONITORING CYCLE"
 
-# Track if any monitoring is enabled
-MONITORING_ENABLED=false
-
-# Optional: Check if disks are already awake (uncomment to enable)
-# if ! are_disks_awake; then
-#     box_line "Disks are sleeping, skipping active monitoring to preserve power"
-#     exit 0
-# fi
-
 # --- ZFS Pool Monitoring ---
 if [[ "${PUSH_ZFS:-false}" == "true" ]]; then
-    if MONITOR_MODE=active "$SCRIPT_DIR/zfs.sh"; then
-        MONITORING_ENABLED=true
-    else
-        box_begin "ZFS Pool"
-        box_line "ERROR: ✗ ZFS metrics collection failed"
-        box_end
-    fi
+    MONITOR_MODE=active "$SCRIPT_DIR/zfs.sh"
 else
     box_begin "ZFS Pool"
     box_line "SKIP: ZFS monitoring disabled (PUSH_ZFS=false)"
@@ -50,13 +35,7 @@ fi
 
 # --- Non-ZFS Disk Monitoring ---
 if [[ "${PUSH_NON_ZFS:-false}" == "true" ]]; then
-    if MONITOR_MODE=active "$SCRIPT_DIR/non-zfs.sh"; then
-        MONITORING_ENABLED=true
-    else
-        box_begin "Non-ZFS Disks"
-        box_line "ERROR: ✗ Non-ZFS disk collection failed"
-        box_end
-    fi
+    MONITOR_MODE=active "$SCRIPT_DIR/non-zfs.sh"
 else
     box_begin "Non-ZFS Disks"
     box_line "SKIP: Non-ZFS disk monitoring disabled (PUSH_NON_ZFS=false)"
@@ -65,36 +44,20 @@ fi
 
 # --- NVMe Wear Monitoring ---
 if [[ "${PUSH_NVME_WEAR:-false}" == "true" ]]; then
-    box_line "Running NVMe wear collection..."
-    if "$SCRIPT_DIR/wear.sh"; then
-        box_line "INFO: ✓ NVMe wear collected"
-        MONITORING_ENABLED=true
-    else
-        box_line "ERROR: ✗ NVMe wear collection failed"
-    fi
+    "$SCRIPT_DIR/wear.sh"
 else
+    box_begin "NVMe Wear"
     box_line "SKIP: NVMe wear monitoring disabled (PUSH_NVME_WEAR=false)"
+    box_end
 fi
 
 # --- NVMe Health Monitoring ---
 if [[ "${PUSH_NVME_HEALTH:-false}" == "true" ]]; then
-    box_line "Running NVMe health collection..."
-    if "$SCRIPT_DIR/health.sh"; then
-        box_line "✓ NVMe health collected"
-        MONITORING_ENABLED=true
-    else
-        box_line "ERROR: ✗ NVMe health collection failed"
-    fi
+    "$SCRIPT_DIR/health.sh"
 else
+    box_begin "NVMe Health"
     box_line "SKIP: NVMe health monitoring disabled (PUSH_NVME_HEALTH=false)"
+    box_end
 fi
-
-# --- Warning if nothing is enabled ---
-if [[ "$MONITORING_ENABLED" == "false" ]]; then
-    box_line "WARNING: No active monitoring enabled in sentrylab.conf"
-    box_line "WARNING: Enable at least one of: PUSH_ZFS, PUSH_NON_ZFS"
-fi
-
-box_end
 
 exit 0
