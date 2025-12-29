@@ -47,5 +47,11 @@ else
     echo "Configuration exists at $CONF_FILE. Skipping overwrite."
 fi
 
+# 4. Deploy Services & Timers
+
+
+
+
+
 echo "Installation complete."
 echo "Next step: Update /etc/sentrylab.conf with your settings."
