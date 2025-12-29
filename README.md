@@ -1,11 +1,12 @@
 # SentryLab-PVE 🛡️
 **Advanced Monitoring for Proxmox with MQTT & ESPHome Integration.**
 
-`SentryLab-PVE` is a lightweight, modular monitoring suite designed for Proxmox hosts and NAS systems. It collects hardware metrics (Temperature, ZFS health, NVMe Wear/Smart) and broadcasts them via MQTT for real-time visualization on Home Assistant and ESPHome-based physical displays.
+`SentryLab-PVE` stands for Sentry Home Lab based on Proxmox Virtual Envirnoment. It is a lightweight, modular monitoring suite designed for my Proxmox host. It collects hardware metrics (Temperature, ZFS health, NVMe Wear/Smart...) and broadcasts them via a MQTT broker for real-time visualization on Home Assistant and, eventually, ESPHome-based physical displays.
 
 Tested on and deployed in my Proxmox 9.1.4.
 
 ## 🚀 Key Features
+
 * **Logical Separation**: Metrics are split into specialized scripts (Temp, ZFS, Wear, Health).
 * **Smart Automation**: Driven by Systemd Timers (no more messy crontabs).
 * **Physical Dashboard**: Provide with an example for an ESP8266 (Witty Cloud) to provide visual alerts (RGB LED color coding).
@@ -45,15 +46,16 @@ SentryLab-PVE/
 
 * HomeAssitant
 * A MQTT Broker
-* A host to be monitored
+* One or many proxmox hosts to be monitored
 
 #### host dependencies
 
-In order to install SentryLab-PVE, ensure `git` is present on your Proxmox host:
+The more convennient way to install or update SentryLab-PVE is to use `git`. Install it fi necessary:
 
 ```bash
 apt update && apt install git -y
 ```
+Alternatively you may of course download/unzip it with other tools.
 
 To actually use it, mosquitto_pub and jq are required
 
@@ -121,21 +123,21 @@ sudo nano /usr/local/etc/sentrylab.conf
 
 Key Parameters:
 
-MQTT_HOST: Replace 192.168.x.x yb your MQTT Broker IP.
+MQTT_HOST: Replace 192.168.x.x by your MQTT Broker IP.
 MQTT_USER / MQTT_PASS: MQTT Credentials.
-HOST_NAME: The identifier for Home Assistant (e.g., albusnexus).
 
-### 3. Manual Testing (Debug Mode)
+### 3. Recommended Manual Testing (Debug/Simulation Mode)
 
-Verify your configuration by running any script with the DEBUG flag set to true. This prints the JSON output and simulates MQTT publications.
+Verify your configuration by running scripts with the DEBUG flag set to true in SentrLab.conf. This prints the JSON output and simulates MQTT publications.
 
-# Check configuration once more
+# Review the configuration once more
 
 ```bash
 sudo nano /usr/local/bin/utils.sh
 ```
 
 # Test discovery
+
 ```bash
 sudo nano /usr/local/bin/discovery.sh
 ```
@@ -158,6 +160,8 @@ To stop everything for maintenance, use sudo stop bash.
 ```bash
 sudo /usr/local/bin/sentrylab/stop.sh
 ```
+### 5. Integration in Home Assistant
+
 
 
 ## 💡 ESPHome Visual Alerts
