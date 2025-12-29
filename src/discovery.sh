@@ -189,7 +189,7 @@ if [[ "$PUSH_SYSTEM" == "true" ]]; then
             --arg icon "mdi:speedometer-medium" \
             --arg av_t "$AVAIL_TOPIC" \
             --argjson dev "$DEVICE_JSON" \
-            '{name: $name, unique_id: $unique_id, object_id: $unique_id, state_topic: $stat_t, value_template: $val_tpl, icon: $icon, availability_topic: $av_t, dev: $dev}')
+            '{name: $name, unique_id: $unique_id, object_id: $unique_id, state_topic: $stat_t, value_template: $val_tpl, icon: $icon, availability_topic: $av_t, state_class: "measurement", suggested_display_precision: 2, dev: $dev}')
         
         mqtt_publish_retain "$CFG_TOPIC" "$PAYLOAD"
         CSV_SYSTEM_DATA+="${HA_ID},Load (5m),Charge CPU (5 min)"$'\n'
@@ -259,7 +259,7 @@ if [[ "$PUSH_SYSTEM" == "true" ]]; then
         --arg icon "mdi:thermometer-alert" \
         --arg av_t "$AVAIL_TOPIC" \
         --argjson dev "$DEVICE_JSON" \
-        '{name: $name, unique_id: $unique_id, object_id: $unique_id, state_topic: $stat_t, value_template: $val_tpl, icon: $icon, availability_topic: $av_t, dev: $dev}')
+            '{name: $name, unique_id: $unique_id, object_id: $unique_id, state_topic: $stat_t, value_template: $val_tpl, icon: $icon, availability_topic: $av_t, unit_of_measurement: "events", state_class: "total_increasing", dev: $dev}')
     mqtt_publish_retain "$CFG_TOPIC" "$PAYLOAD"
     CSV_SYSTEM_DATA+="${HA_ID},Throttle Events,Événements de limitation thermique"$'\n'
     box_line "Thermal Throttle Count: Registered"
