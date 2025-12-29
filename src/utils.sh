@@ -5,7 +5,7 @@
 # @author CmPi <cmpi@webe.fr>
 # @brief Global functions for SentryLab-PVE
 # @date 2025-12-28
-# @version 1.0.362.9
+# @version 1.0.363
 # @usage source "$(dirname "$0")/utils.sh"
 # @notes * Make it executable: chmod +x /usr/local/bin/sentrylab/*.sh
 #        * Run directly to display current configuration

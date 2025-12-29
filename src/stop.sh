@@ -5,7 +5,7 @@
 # @author CmPi <cmpi@webe.fr>
 # @brief Deactivate SentryLab systemd services and timers
 # @date 2025-12-29
-# @version 1.0.362.8
+# @version 1.0.363
 # @usage sudo /usr/local/bin/sentrylab/stop.sh
 #
 

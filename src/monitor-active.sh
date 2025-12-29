@@ -5,7 +5,7 @@
 # @author CmPi <cmpi@webe.fr>
 # @brief Orchestrator for active monitoring (may wake disks)
 # @date 2025-12-29
-# @version 1.2.2
+# @version 1.0.363
 # @usage Called by sentrylab-active.timer (evening or opportunistic)
 # @notes Respects PUSH_* flags from sentrylab.conf
 #        WARNING: This script may wake sleeping disks
@@ -29,7 +29,7 @@ if [[ "${PUSH_ZFS:-false}" == "true" ]]; then
     MONITOR_MODE=active "$SCRIPT_DIR/zfs.sh"
 else
     box_begin "ZFS Pool"
-    box_line "SKIP: ZFS monitoring disabled (PUSH_ZFS=false)"
+    box_line "SKIP: ZFS pool monitoring disabled (PUSH_ZFS=false)"
     box_end
 fi
 
