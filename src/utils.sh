@@ -152,6 +152,8 @@ mqtt_publish_retain() {
     fi
 
     if [[ "${INTERACTIVE:-false}" == "true" ]]; then
+        box_line "Attempt to publish (RETAIN) to $topic"
+
         # Interactive mode: capture output and display with box_line
         local mqtt_out
         mqtt_out=$(mosquitto_pub -h "$BROKER" -p "$PORT" \
@@ -210,6 +212,7 @@ mqtt_publish_no_retain() {
 
     if [[ "${INTERACTIVE:-false}" == "true" ]]; then
         # Interactive mode: capture output and display with box_line
+        box_line "Attempt to publish (NO-RETAIN) to $topic"
         local mqtt_out
         mqtt_out=$(mosquitto_pub -h "$BROKER" -p "$PORT" \
                          -u "$USER" -P "$PASS" \
