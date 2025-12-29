@@ -324,6 +324,16 @@ strip_colors() {
     printf '%s' "$clean"
 }
 
+
+strip_ansi() {
+    local s="$1"
+    while [[ "$s" =~ $'\e''\[[0-9;]*m' ]]; do
+        s="${s/${BASH_REMATCH[0]}/}"
+    done
+    printf '%s' "$s"
+}
+
+
 # Titre Majeur (Bordure double, centré)
 box_title() {
     [[ "${DEBUG:-false}" != "true" ]] && return 0
@@ -386,37 +396,35 @@ str_width() {
 }
 
 wrap_text() {
-    local text="$1"
-    local max="$2"
-    local line word out=""
-
+    local text="${1-}"
+    local max="${2-0}"
+    local cur="" word out=""
+    # Cas chaîne vide → une ligne vide
+    [[ -z "$text" ]] && { printf '\n'; return 0; }
     for word in $text; do
-        local test="$line${line:+ }$word"
-        if (( $(str_width "$test") <= max )); then
-            line="$test"
+        local test
+        if [[ -n "$cur" ]]; then
+            test="$cur $word"
         else
-            out+="$line"$'\n'
-            line="$word"
+            test="$word"
+        fi
+        if (( $(str_width "$test") <= max )); then
+            cur="$test"
+        else
+            out+="$cur"$'\n'
+            cur="$word"
         fi
     done
-
-    out+="$line"
+    out+="$cur"
     printf '%s' "$out"
 }
 
-strip_ansi() {
-    local s="$1"
-    while [[ "$s" =~ $'\e''\[[0-9;]*m' ]]; do
-        s="${s/${BASH_REMATCH[0]}/}"
-    done
-    printf '%s' "$s"
-}
 
 box_line() {
     [[ "${DEBUG:-false}" != "true" ]] && return 0
 
-    local input="$1"
-    local width=${2:-$BOX_WIDTH}
+    local input="${1-}"
+    local width="${2-$BOX_WIDTH}"
     [[ ! "$width" =~ ^[0-9]+$ ]] && width=80
     local max=$((width - 4))
 
@@ -427,11 +435,14 @@ box_line() {
     local CYA='\033[36m'
     local CLR='\033[0m'
 
-    local raw line colored plain wrapped vis pad
+    local raw phys_line colored plain wrapped vis pad
 
-    while IFS= read -r raw; do
+    # Si input vide → forcer une ligne vide
+    [[ -z "$input" ]] && input=""
 
-        # ---- coloring ----
+    while IFS= read -r raw || [[ -z "$raw" ]]; do
+
+        # ---- coloration ----
         if [[ "$raw" == *": "* ]]; then
             local label="${raw%%: *}: "
             local value="${raw#*: }"
@@ -455,12 +466,12 @@ box_line() {
         plain=$(strip_ansi "$colored")
         wrapped=$(wrap_text "$plain" "$max")
 
-        # ---- render ----
-        while IFS= read -r line; do
-            vis=$(str_width "$line")
+        # ---- rendu ----
+        while IFS= read -r phys_line || [[ -z "$phys_line" ]]; do
+            vis=$(str_width "$phys_line")
             pad=$((max - vis))
             printf "│ %b%*s │\n" \
-                "${colored%%"$plain"*}$line${colored#"$plain"}" \
+                "${colored%%"$plain"*}$phys_line${colored#"$plain"}" \
                 "$pad" ""
         done <<< "$wrapped"
 

@@ -219,7 +219,7 @@ for hw_path in /sys/class/hwmon/hwmon*; do
     [[ -n "$SN" ]] || { log_debug "Could not retrieve serial number for $nvme_dev"; continue; }
     SN_LOWER=$(echo "$SN" | tr '[:upper:]' '[:lower:]')
     MODEL=$(cat "/sys/class/nvme/$nvme_dev/model" 2>/dev/null | tr -d ' ' || echo "NVMe")
-    box_line "Slot $NVME_SLOT_ID: S/N $SN P/N $MODEL"
+    box_line "$NVME_SLOT_ID: S/N $SN P/N $MODEL"
 
     # --- Wear sensor ---
     if [[ "$PUSH_NVME_WEAR" == "true" ]]; then
