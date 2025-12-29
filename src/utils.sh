@@ -155,7 +155,7 @@ mqtt_publish_retain() {
         # Interactive mode: direct execution with error display
         if mosquitto_pub -h "$BROKER" -p "$PORT" \
                          -u "$USER" -P "$PASS" \
-                         -t "$topic" -m "$payload" -r -q "$MQTT_QOS"; then
+                         -t "$topic" -m "$payload" -r -q "${MQTT_QOS:-1}"; then
             log_debug "Published (Retain) to $topic"
             return 0
         else
@@ -164,10 +164,22 @@ mqtt_publish_retain() {
             return 1
         fi
     else
+        box_value "Topic" "$topic"
+        box_value "Payload" "${payload}"
+        box_value "BROKER" "$BROKER"
+        box_value "PORT" "$PORT"
+        box_value "USER" "$USER"
+        box_value "PASS" "$PASS"
+        box_value "MQTT_QOS" "${MQTT_QOS:-1}"   
+
+        # mosquitto_pub -h "$BROKER" -p "$PORT" \
+        #               -u "$USER" -P "$PASS" \
+        #               -t "$topic" -m "$payload" -r -q 1; then
+
         # Non-interactive mode: let journal collect output
         if mosquitto_pub -h "$BROKER" -p "$PORT" \
                          -u "$USER" -P "$PASS" \
-                         -t "$topic" -m "$payload" -r -q "$MQTT_QOS"; then
+                         -t "$topic" -m "$payload" -r -q "${MQTT_QOS:-1}"; then
             log_debug "Published (Retain) to $topic"
             return 0
         else
@@ -208,7 +220,7 @@ mqtt_publish_no_retain() {
                          --will-topic "$AVAIL_TOPIC" \
                          --will-payload "offline" \
                          --will-retain \
-                         -q "$MQTT_QOS"; then
+                         -q "${MQTT_QOS:-1}"; then
             log_debug "Published (No-Retain) to $topic"
             return 0
         else
@@ -224,7 +236,7 @@ mqtt_publish_no_retain() {
                          --will-topic "$AVAIL_TOPIC" \
                          --will-payload "offline" \
                          --will-retain \
-                         -q "$MQTT_QOS"; then
+                         -q "${MQTT_QOS:-1}"; then
             log_debug "Published (No-Retain) to $topic"
             return 0
         else
