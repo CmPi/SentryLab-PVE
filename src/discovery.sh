@@ -1,6 +1,7 @@
 #!/bin/bash
 
 #
+    box_line "Reached after CPU config publish" "LIGHTGRAY"
 # @file /usr/local/bin/sentrylab/discovery.sh
 # @author CmPi <cmpi@webe.fr>
 # @brief Publishes NAS sensors to Home Assistant for automatic discovery
@@ -152,6 +153,7 @@ if [[ "$PUSH_SYSTEM" == "true" ]]; then
         }'
     )
     mqtt_publish_retain "$CFG_TOPIC" "$PAYLOAD"
+    box_line "Reached after Chassis config publish" "LIGHTGRAY"
     CSV_SYSTEM_DATA+="${HA_ID},Chassis temperature,Température du chassis"$'\n'
 
     # --- CPU Cores (Static) ---

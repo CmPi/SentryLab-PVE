@@ -167,8 +167,9 @@ mqtt_publish_retain() {
                          -t "$topic" -m "$payload" -r -q "${MQTT_QOS:-1}" 2>"$mqtt_err"; then
             box_line "Published successfully" "GREEN"
             log_debug "Published (Retain) to $topic"
+            box_line "after log_debug"
             rm -f "$mqtt_err"
-            box_line "return 0"
+            box_line "before return 0"
             return 0
         else
             local err_code=$?
