@@ -3,6 +3,7 @@
 # @author CmPi <cmpi@webe.fr>
 # @repo https://github.com/CmPi/SentryLab-PVE
 # @brief Service launching SentryLab active sensors polling, potentially awaking devices
+# @version 1.0.362
 #
 
 [Unit]
@@ -12,6 +13,6 @@ Wants=network-online.target
 
 [Service]
 Type=oneshot
-ExecStart=/usr/local/bin/sentrylab/active.sh
+ExecStart=/usr/local/bin/sentrylab/monitor-active.sh
 StandardOutput=journal
 StandardError=journal

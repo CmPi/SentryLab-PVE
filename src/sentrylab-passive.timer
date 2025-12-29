@@ -3,13 +3,17 @@
 # @author CmPi <cmpi@webe.fr>
 # @repo https://github.com/CmPi/SentryLab-PVE
 # @brief Fetch data in a passive way (not awaking devices)
+# @version 1.0.362
 #
 
 [Unit]
 Description=Timer for SentryLab passive sensors (3 minutes)
+Documentation=https://github.com/CmPi/SentryLab-PVE
 
 [Timer]
+# Boot after 2 minutes (allows system to stabilize)
 OnBootSec=2min
+# Then repeat every 3 minutes (frequent, non-intrusive polling)
 OnUnitActiveSec=3min
 Unit=sentrylab-passive.service
 

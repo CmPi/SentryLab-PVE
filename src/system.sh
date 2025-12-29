@@ -5,7 +5,7 @@
 # @author CmPi <cmpi@webe.fr>
 # @brief Releve les températures CPU, NVMe et NAS ambient et les publie via MQTT
 # @date 2025-12-27
-# @version 1.1.361
+# @version 1.0.362
 # @usage À exécuter périodiquement (ex: via cron ou timer systemd)
 # @notes * make it executable as usual using the command:
 #          chmod +x /usr/local/bin/*.sh

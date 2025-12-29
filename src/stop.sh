@@ -5,7 +5,7 @@
 # @author CmPi <cmpi@webe.fr>
 # @brief Deactivate SentryLab systemd services and timers
 # @date 2025-12-29
-# @version 1.0
+# @version 1.0.362
 # @usage sudo /usr/local/bin/sentrylab/stop.sh
 #
 
@@ -70,20 +70,27 @@ box_end
 box_begin "Cleanup"
 box_value "Target directory" "$SYSTEMD_LIVE"
 
-deleted_count=0
+# Create backup directory (overwrites previous backups)
+BACKUP_DIR="$SCRIPT_DIR/systemd_backup"
+mkdir -p "$BACKUP_DIR"
+
+backed_up_count=0
 if [ -d "$SYSTEMD_STAGING" ]; then
-    # Count and remove service files
+    # Backup and remove service/timer files
     for file in "$SYSTEMD_LIVE"/sentrylab*.service "$SYSTEMD_LIVE"/sentrylab*.timer; do
         if [ -f "$file" ]; then
+            filename=$(basename "$file")
+            cp "$file" "$BACKUP_DIR/" 2>/dev/null || true
             rm -f "$file"
-            ((deleted_count++))
+            ((backed_up_count++))
         fi
     done
     
-    if [ $deleted_count -eq 0 ]; then
-        box_line "WARNING: No systemd unit files found to delete"
+    if [ $backed_up_count -eq 0 ]; then
+        box_line "WARNING: No systemd unit files found to backup"
     else
-        box_value "Files deleted" "$deleted_count units"
+        box_value "Files backed up" "$backed_up_count units"
+        box_value "Backup location" "$BACKUP_DIR"
         box_line "INFO: Systemd units removed from live directory" "GREEN"
     fi
 else
@@ -93,14 +100,16 @@ fi
 box_line "Reloading systemd daemon..."
 systemctl daemon-reload
 box_line "INFO: Daemon reloaded" "GREEN"
-box_end
 
-echo
-if [ $disabled_count -eq 0 ] && [ $deleted_count -eq 0 ]; then
-    box_line "WARNING: No changes made (0 units disabled, 0 files deleted)" "YELLOW"
+if [ $disabled_count -eq 0 ] && [ $backed_up_count -eq 0 ]; then
+    box_line "WARNING: No changes made (0 units disabled, 0 files backed up)" "YELLOW"
     box_line "SentryLab services were not active or already removed"
 else
     box_line "SentryLab services deactivated successfully" "GREEN"
+    if [ $backed_up_count -gt 0 ]; then
+        box_line "Customized units preserved in: $BACKUP_DIR" "CYAN"
+    fi
 fi
 box_line "To activate again: $SCRIPT_DIR/start.sh" "CYAN"
-echo
+
+box_end

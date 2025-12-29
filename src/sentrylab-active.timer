@@ -3,13 +3,17 @@
 # @author CmPi <cmpi@webe.fr>
 # @repo https://github.com/CmPi/SentryLab-PVE
 # @brief Fetch data in active way (awaking devices if needed)
+# @version 1.0.362
 #
 
 [Unit]
 Description=Timer for SentryLab active sensors (evening)
+Documentation=https://github.com/CmPi/SentryLab-PVE
 
 [Timer]
+# Boot after 10 minutes (allows system to stabilize)
 OnBootSec=10min
+# Daily at 21:30 (evening - suitable for active/waking operations)
 OnCalendar=*-*-* 21:30:00
 Unit=sentrylab-active.service
 

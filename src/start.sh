@@ -5,7 +5,7 @@
 # @author CmPi <cmpi@webe.fr>
 # @brief Activate SentryLab systemd services and timers
 # @date 2025-12-29
-# @version 1.0
+# @version 1.0.362
 # @usage sudo /usr/local/bin/sentrylab/start.sh
 #
 
@@ -41,25 +41,63 @@ if [ ! -d "$SYSTEMD_STAGING" ]; then
     exit 1
 fi
 
+# Check for backup files
+BACKUP_DIR="$SCRIPT_DIR/systemd_backup"
+has_backup=false
+if [ -d "$BACKUP_DIR" ] && ls "$BACKUP_DIR"/*.service >/dev/null 2>&1 || ls "$BACKUP_DIR"/*.timer >/dev/null 2>&1; then
+    has_backup=true
+fi
+
+# Determine which files to use
+SOURCE_DIR="$SYSTEMD_STAGING"
+if [ "$has_backup" = true ]; then
+    box_begin "Unit Files Available"
+    box_line "Default units in: $SYSTEMD_STAGING"
+    box_line "Customized backup in: $BACKUP_DIR"
+    box_end
+    echo
+    
+    # Ask user which version to install
+    box_line "Which version would you like to install?"
+    echo
+    echo "  1) Default (from staging directory)"
+    echo "  2) Customized (from backup directory)"
+    echo
+    read -p "Enter choice (1 or 2): " choice
+    echo
+    
+    case "$choice" in
+        2)
+            SOURCE_DIR="$BACKUP_DIR"
+            box_line "INFO: Using customized backup units" "GREEN"
+            ;;
+        1|*)
+            SOURCE_DIR="$SYSTEMD_STAGING"
+            box_line "INFO: Using default units" "GREEN"
+            ;;
+    esac
+    echo
+fi
+
 box_begin "Deploying Systemd Units"
-box_value "Staging directory" "$SYSTEMD_STAGING"
+box_value "Source directory" "$SOURCE_DIR"
 box_value "Target directory" "$SYSTEMD_LIVE"
 
 # Move service and timer files from staging to live
-if ls "$SYSTEMD_STAGING"/*.service >/dev/null 2>&1; then
-    cp "$SYSTEMD_STAGING"/*.service "$SYSTEMD_LIVE/"
+if ls "$SOURCE_DIR"/*.service >/dev/null 2>&1; then
+    cp "$SOURCE_DIR"/*.service "$SYSTEMD_LIVE/"
     chmod 644 "$SYSTEMD_LIVE"/*.service
     box_line "INFO: Services copied and permissions set"
 else
-    box_line "WARNING: No *.service files found in staging"
+    box_line "WARNING: No *.service files found in source"
 fi
 
-if ls "$SYSTEMD_STAGING"/*.timer >/dev/null 2>&1; then
-    cp "$SYSTEMD_STAGING"/*.timer "$SYSTEMD_LIVE/"
+if ls "$SOURCE_DIR"/*.timer >/dev/null 2>&1; then
+    cp "$SOURCE_DIR"/*.timer "$SYSTEMD_LIVE/"
     chmod 644 "$SYSTEMD_LIVE"/*.timer
     box_line "INFO: Timers copied and permissions set"
 else
-    box_line "WARNING: No *.timer files found in staging"
+    box_line "WARNING: No *.timer files found in source"
 fi
 box_end
 

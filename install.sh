@@ -5,7 +5,7 @@
 # @repo https://github.com/CmPi/SentryLab-PVE
 # @brief Root installation script for SentryLab-PVE
 # @date 2025-12-28
-# @version 1.1.361
+# @version 1.0.362
 # @usage sudo ./install.sh
 #
 
@@ -27,6 +27,7 @@ echo "--- SentryLab Installation ---"
 # 1. Create Directories
 mkdir -p "$DEST_DIR"
 mkdir -p "$DEST_DIR/systemd"
+mkdir -p "$DEST_DIR/systemd_backup"
 mkdir -p "$EXPORT_DIR"
 
 # 2. Deploy Scripts from ./src
