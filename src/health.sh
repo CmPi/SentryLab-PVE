@@ -88,7 +88,7 @@ for hw_path in /sys/class/hwmon/hwmon*; do
     fi
 done
 
-mqtt_publish "$HEALTH_TOPIC" "$JSON"
+mqtt_publish_retain "$HEALTH_TOPIC" "$JSON"
 
 log_debug "--- NAS HEALTH SCAN COMPLETE ---"
 

@@ -10,6 +10,8 @@
 #
 
 set -euo pipefail
+# Ensure globs that don't match expand to nothing (not literal patterns)
+shopt -s nullglob
 
 # Check if running as root
 if [[ $EUID -ne 0 ]]; then
@@ -37,27 +39,41 @@ box_title "Deactivating SentryLab Services"
 
 box_begin "Stopping Systemd Units"
 
-# Stop and disable services
 disabled_count=0
-for service in "$SYSTEMD_LIVE"/sentrylab*.service; do
-    if [ -f "$service" ]; then
-        service_name=$(basename "$service")
-        systemctl stop "$service_name" 2>/dev/null || true
-        systemctl disable "$service_name" 2>/dev/null || true
-        box_value "Service" "$service_name stopped and disabled" "YELLOW"
-        ((disabled_count++))
+
+# Explicit list of known units to avoid early exits and ensure coverage
+services=(
+  "sentrylab-active.service"
+  "sentrylab-passive.service"
+  "sentrylab-discovery.service"
+)
+timers=(
+  "sentrylab-active.timer"
+  "sentrylab-passive.timer"
+)
+
+# Stop/disable services regardless of file presence
+for unit in "${services[@]}"; do
+    systemctl stop "$unit" >/dev/null 2>&1 || true
+    systemctl disable "$unit" >/dev/null 2>&1 || true
+    if systemctl is-enabled "$unit" >/dev/null 2>&1; then
+        box_value "Service" "$unit still enabled (check dependencies)" "YELLOW"
+    else
+        box_value "Service" "$unit stopped and disabled"
     fi
+    ((disabled_count++))
 done
 
-# Stop and disable timers
-for timer in "$SYSTEMD_LIVE"/sentrylab*.timer; do
-    if [ -f "$timer" ]; then
-        timer_name=$(basename "$timer")
-        systemctl stop "$timer_name" 2>/dev/null || true
-        systemctl disable "$timer_name" 2>/dev/null || true
-        box_value "Timer" "$timer_name stopped and disabled" "YELLOW"
-        ((disabled_count++))
+# Stop/disable timers regardless of file presence
+for unit in "${timers[@]}"; do
+    systemctl stop "$unit" >/dev/null 2>&1 || true
+    systemctl disable "$unit" >/dev/null 2>&1 || true
+    if systemctl is-enabled "$unit" >/dev/null 2>&1; then
+        box_value "Timer" "$unit still enabled (check dependencies)" "YELLOW"
+    else
+        box_value "Timer" "$unit stopped and disabled"
     fi
+    ((disabled_count++))
 done
 
 if [ $disabled_count -eq 0 ]; then

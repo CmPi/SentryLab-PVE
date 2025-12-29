@@ -90,7 +90,7 @@ if [[ "$PUSH_NVME_WEAR" == "true" ]]; then
 
     # --- Publish JSON to MQTT ---
     if [[ "$DEBUG" != "true" ]]; then
-        mqtt_publish "$WEAR_TOPIC" "$JSON"
+        mqtt_publish_retain "$WEAR_TOPIC" "$JSON"
     else
         log_debug "DEBUG mode: MQTT publish skipped"
     fi
