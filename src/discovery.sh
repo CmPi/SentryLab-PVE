@@ -26,7 +26,12 @@ else
     exit 1
 fi
 
-# --- Attente du Broker MQTT ---
+box_title "SentryLab Discovery Script (simulation mode)"
+
+# === Broker MQTT Availability ===
+
+box_begin "MQTT Broker Availability"
+
 MAX_RETRIES=40
 RETRY_COUNT=0
 
@@ -37,12 +42,14 @@ while ! nc -z "$BROKER" "$PORT"; do
     RETRY_COUNT=$((RETRY_COUNT + 1))
     if [ $RETRY_COUNT -ge $MAX_RETRIES ]; then
         log_error "Broker unreachable after $MAX_RETRIES attempts. Exiting."
+        box_end
         exit 1
     fi
     log_debug "Broker not ready... retrying in 10s ($RETRY_COUNT/$MAX_RETRIES)"
     sleep 15
 done
 log_debug "Broker is UP! Proceeding with discovery."
+box_end
 
 # --- Enable nullglob for NVMe temperature sensors et pools enumaration ---
 shopt -s nullglob
@@ -70,7 +77,7 @@ CSV_SYSTEM_DATA=""
 
 if [[ "$PUSH_SYSTEM" == "true" ]]; then
 
-    box_begin "System Sensors Discovery"
+    box_begin "System Sensors"
 
     CSV_SYSTEM_HDR="HomeAssistant entity ID,Metric name in english,Metric name in french"
 
@@ -188,8 +195,12 @@ fi
 
 # --- 3. Register NVMe sensors for Home Assistant discovery ---
 
-# do not include hostname in HA ID (NVME S/N are unique)
-# a NVME may eventually be moved to another machine, so we rely on S/N only
+# do not include hostname in NVMe HA ID:
+#  * S/N should be unique
+#  * they mght be moved to another machine
+# benefit: after a move, their history in HA is preserved
+
+box_begin "NVMe Sensors"
 
 for hw_path in /sys/class/hwmon/hwmon*; do
     hw_name=$(cat "$hw_path/name" 2>/dev/null || echo "")
@@ -208,9 +219,9 @@ for hw_path in /sys/class/hwmon/hwmon*; do
     MODEL=$(cat "/sys/class/nvme/$nvme_dev/model" 2>/dev/null | tr -d ' ' || echo "NVMe")
     log_debug "Processing NVMe: $MODEL ($SN)"
 
-    if [[ "$PUSH_NVME_WEAR" == "true" ]]; then
 
-        # --- Wear sensor ---
+    # --- Wear sensor ---
+    if [[ "$PUSH_NVME_WEAR" == "true" ]]; then
         HA_ID="nvme_${SN_LOWER}_wear"
         HA_LABEL="Usure du SSD ${SN}"
         CFG_TOPIC="homeassistant/sensor/${HA_ID}/config"      # pour temperature
@@ -235,7 +246,8 @@ for hw_path in /sys/class/hwmon/hwmon*; do
         )
         mqtt_publish_retain "$CFG_TOPIC" "$PAYLOAD"
         CSV_LINES+="${HOST_NAME}_${HA_ID},Wear,\"${HA_LABEL}\",${SN},${NVME_SLOT_ID}"$'\n'
-
+    else
+        box_line "NVMe wear not pushed (PUSH_NVME_WEAR=false)"
     fi
 
     if [[ "$PUSH_NVME_HEALTH" == "true" ]]; then
@@ -266,6 +278,8 @@ for hw_path in /sys/class/hwmon/hwmon*; do
         )
         mqtt_publish_retain "$CFG_TOPIC" "$PAYLOAD"
         CSV_LINES+="${HOST_NAME}_${HA_ID},Health,\"${HA_LABEL}\",${SN},${NVME_SLOT_ID}"$'\n'
+    else
+        box_line "NVMe health not pushed (PUSH_NVME_HEALTH=false)"
     fi
 
     if [[ "$PUSH_NVME_TEMP" == "true" ]]; then
@@ -312,10 +326,13 @@ for hw_path in /sys/class/hwmon/hwmon*; do
             CSV_LINES+="${HOST_NAME}_${HA_ID},${label},\"${HA_LABEL}\",${SN},${NVME_SLOT_ID}"$'\n'
             log_debug "  Registered NVMe temperature sensor: $label"
         done
-
+    else
+        box_line "NVMe temperatures not pushed (PUSH_NVME_TEMP=false)"
     fi
 
 done
+
+box_end
 
 # --- ZFS pools discovery ---
 
