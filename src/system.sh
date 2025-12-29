@@ -39,7 +39,7 @@ if [[ "$PUSH_SYSTEM" == "true" ]]; then
     CPU_TEMP=$(sensors -j | jq -r '."coretemp-isa-0000"?["Package id 0"]?["temp1_input"] // empty')
     if [[ -n "$CPU_TEMP" ]]; then
         JSON_TEMP=$(jq --argjson v "$CPU_TEMP" '. + {cpu: $v}' <<<"$JSON_TEMP")
-        # log_debug "CPU Temp: $CPU_TEMP°C"
+        box_value "cpu temperature" "$CPU_TEMP°C"
     else
         box_line "WARNING: CPU temperature could not be retrieved"
     fi
@@ -50,7 +50,7 @@ if [[ "$PUSH_SYSTEM" == "true" ]]; then
         RAW_AMB=$(cat "/sys/class/hwmon/$ACPI_HWMON/temp1_input")
         NAS_AMB=$(awk "BEGIN{printf \"%.1f\", $RAW_AMB/1000}")
         JSON_TEMP=$(jq --argjson v "$NAS_AMB" '. + {chassis: $v}' <<<"$JSON_TEMP")
-        # log_debug "chassis: $NAS_AMB°C"
+        box_value "chassis temperature" "$NAS_AMB°C"
     else
         box_line "WARNING: NAS ambient temperature could not be retrieved"
     fi
@@ -59,7 +59,8 @@ if [[ "$PUSH_SYSTEM" == "true" ]]; then
     if command -v nproc >/dev/null; then
         CPU_CORES=$(nproc)
         JSON_SYSTEM=$(jq --argjson v "$CPU_CORES" '. + {cpu_cores: $v}' <<<"$JSON_SYSTEM")
-        else
+        box_value "cpu cores" "$CPU_CORES"
+    else
         box_line "WARNING: Could not determine number of CPU cores"
     fi
 
@@ -67,26 +68,16 @@ if [[ "$PUSH_SYSTEM" == "true" ]]; then
     if [[ -f /proc/loadavg ]]; then
         CPU_LOAD=$(awk '{print $2}' /proc/loadavg)
         JSON_SYSTEM=$(jq --argjson v "$CPU_LOAD" '. + {cpu_load_5m: $v}' <<<"$JSON_SYSTEM")
+        box_value "cpu load average (5 min)" "$CPU_LOAD"
     else
         box_line "WARNING: Could not retrieve CPU load average"
     fi
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
+    # --- Publish JSONs to respective topics to MQTT (No-Retain) ---
+    box_line ""
+    box_line "Published system metrics to MQTT topics" "$BOX_WIDTH" "MAGENTA"
+    mqtt_publish_no_retain "$TEMP_TOPIC" "$JSON_TEMP"
+    mqtt_publish_no_retain "$SYSTEM_TOPIC" "$JSON_SYSTEM"
 
 else
     box_line "SKIPPED: System metrics publishing is disabled (PUSH_SYSTEM != true)"    

@@ -645,6 +645,7 @@ box_line() {
 
     # choose a single color for the whole input
     local color=""
+    local lower="${input,,}"
 
     # If explicit color provided, use it (supports NONE for no color)
     if [[ -n "$color_override" ]]; then
@@ -655,10 +656,12 @@ box_line() {
             color="$RED"
         elif [[ "$input" == INFO* || "$input" == *INFO* ]]; then
             color="$GRN"
-        elif [[ "$input" == SKIP* || "$input" == *Disabled* ]]; then
+        elif [[ "$input" == SKIP* || "$input" == *Disabled* || "$lower" == *disabled* || "$lower" == skipped* || "$lower" == *skipped* ]]; then
+            color=$(get_color_code "LIGHTGRAY")
+        elif [[ "$input" == WARNING* || "$input" == *WARNING* ]]; then
             color="$YEL"
         else
-            color=$(get_color_code "LIGHTGRAY")  # default: light gray
+            color=$(get_color_code "WHITE")  # default: white for maximum compatibility
         fi
     fi
 

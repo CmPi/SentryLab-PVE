@@ -196,13 +196,13 @@ fi
 box_begin "NVMe Sensors"
 
 if [[ "$PUSH_NVME_WEAR" != "true" ]]; then
-    box_line "Wear disabled (PUSH_NVME_WEAR!=true)"
+    box_line "Wear" "disabled (PUSH_NVME_WEAR!=true)"
 fi
 if [[ "$PUSH_NVME_HEALTH" != "true" ]]; then
-    box_line "Health disabled (PUSH_NVME_HEALTH!=true)"
+    box_line "Health" "disabled (PUSH_NVME_HEALTH!=true)"
 fi
 if [[ "$PUSH_NVME_TEMP" != "true" ]]; then
-    box_line "Temp disabled (PUSH_NVME_TEMP!=true)"
+    box_line "Temperature" "disabled (PUSH_NVME_TEMP!=true)"
 fi
 
 for hw_path in /sys/class/hwmon/hwmon*; do
