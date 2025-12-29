@@ -106,7 +106,7 @@ box_line "Reloading systemd daemon..."
 systemctl daemon-reload
 box_line "INFO: Daemon reloaded" "GREEN"
 
-// Enable and start services, capturing output from systemctl enable
+# Enable and start services, capturing output from systemctl enable
 for service in "$SYSTEMD_LIVE"/sentrylab*.service; do
     if [ -f "$service" ]; then
         service_name=$(basename "$service")
