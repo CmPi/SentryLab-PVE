@@ -311,6 +311,9 @@ fi
 
 box_begin "NVMe Sensors"
 
+# Track if any NVMe devices were discovered via hwmon
+NVME_FOUND=false
+
 if [[ "$PUSH_NVME_WEAR" != "true" ]]; then
     box_value "Wear" "disabled (PUSH_NVME_WEAR!=true)"
 fi
@@ -364,6 +367,7 @@ for hw_path in /sys/class/hwmon/hwmon*; do
         )
         mqtt_publish_retain "$CFG_TOPIC" "$PAYLOAD"
         CSV_NVME_DATA+="${HOST_NAME}_${HA_ID},Wear,\"${HA_LABEL}\",${SN},${NVME_SLOT_ID}"$'\n'
+        NVME_FOUND=true
     fi
 
     if [[ "$PUSH_NVME_HEALTH" == "true" ]]; then
@@ -394,6 +398,7 @@ for hw_path in /sys/class/hwmon/hwmon*; do
         )
         mqtt_publish_retain "$CFG_TOPIC" "$PAYLOAD"
         CSV_NVME_DATA+="${HOST_NAME}_${HA_ID},Health,\"${HA_LABEL}\",${SN},${NVME_SLOT_ID}"$'\n'
+        NVME_FOUND=true
     fi
 
     if [[ "$PUSH_NVME_TEMP" == "true" ]]; then
@@ -438,6 +443,7 @@ for hw_path in /sys/class/hwmon/hwmon*; do
             )
             mqtt_publish_retain "$CFG_TOPIC" "$PAYLOAD"
             CSV_NVME_DATA+="${HOST_NAME}_${HA_ID},${label},\"${HA_LABEL}\",${SN},${NVME_SLOT_ID}"$'\n'
+            NVME_FOUND=true
             box_line "Registered NVMe temperature sensor: $label"
         done
     fi
@@ -445,6 +451,56 @@ for hw_path in /sys/class/hwmon/hwmon*; do
 done
 
 box_end
+
+# Fallback: enumerate NVMe devices directly if hwmon did not expose any
+if [[ "$NVME_FOUND" == false && ("$PUSH_NVME_WEAR" == "true" || "$PUSH_NVME_HEALTH" == "true") ]]; then
+    box_begin "NVMe Fallback Enumeration"
+    for nvme_dev_path in /sys/class/nvme/nvme*; do
+        [[ -d "$nvme_dev_path" ]] || continue
+        nvme_dev=$(basename "$nvme_dev_path")
+        SN=$(cat "$nvme_dev_path/serial" 2>/dev/null | tr -d ' ')
+        [[ -n "$SN" ]] || { box_line "SKIP: No serial for $nvme_dev"; continue; }
+        SN_LOWER=$(echo "$SN" | tr '[:upper:]' '[:lower:]')
+        MODEL=$(cat "$nvme_dev_path/model" 2>/dev/null | tr -d ' ' || echo "NVMe")
+        NVME_SLOT_ID="Slot n/a"
+        box_value "$NVME_SLOT_ID" "S/N $SN - P/N $MODEL"
+
+        if [[ "$PUSH_NVME_WEAR" == "true" ]]; then
+            HA_ID="nvme_${SN_LOWER}_wear"
+            HA_LABEL="$(translate "nvme_wear") ${SN}"
+            CFG_TOPIC="homeassistant/sensor/${HA_ID}/config"
+            PAYLOAD=$(jq -n \
+                --arg name "$HA_LABEL" \
+                --arg unique_id "$HA_ID" \
+                --arg stat_t "$WEAR_TOPIC" \
+                --arg val_tpl "{{ value_json.nvme_${SN_LOWER} }}" \
+                --arg av_t "$AVAIL_TOPIC" \
+                --argjson dev "$DEVICE_JSON" \
+                '{name: $name, unique_id: $unique_id, object_id: $unique_id, state_topic: $stat_t, value_template: $val_tpl, unit_of_measurement: "%", icon: "mdi:gauge", availability_topic: $av_t, dev: $dev}')
+            mqtt_publish_retain "$CFG_TOPIC" "$PAYLOAD"
+            CSV_NVME_DATA+="${HOST_NAME}_${HA_ID},Wear,\"${HA_LABEL}\",${SN},${NVME_SLOT_ID}"$'\n'
+            NVME_FOUND=true
+        fi
+
+        if [[ "$PUSH_NVME_HEALTH" == "true" ]]; then
+            HA_ID="nvme_${SN_LOWER}_health"
+            HA_LABEL="$(translate "nvme_health") ${SN} (slot ${NVME_SLOT_ID})"
+            CFG_TOPIC="homeassistant/binary_sensor/${HA_ID}/config"
+            PAYLOAD=$(jq -n \
+                --arg name "$HA_LABEL" \
+                --arg unique_id "$HA_ID" \
+                --arg stat_t "$HEALTH_TOPIC" \
+                --arg val_tpl "{{ value_json.nvme_${SN_LOWER} }}" \
+                --arg av_t "$AVAIL_TOPIC" \
+                --argjson dev "$DEVICE_JSON" \
+                '{name: $name, unique_id: $unique_id, object_id: $unique_id, payload_on: "1", payload_off: "0", state_topic: $stat_t, value_template: $val_tpl, device_class: "problem", availability_topic: $av_t, icon: "mdi:heart-pulse", dev: $dev}')
+            mqtt_publish_retain "$CFG_TOPIC" "$PAYLOAD"
+            CSV_NVME_DATA+="${HOST_NAME}_${HA_ID},Health,\"${HA_LABEL}\",${SN},${NVME_SLOT_ID}"$'\n'
+            NVME_FOUND=true
+        fi
+    done
+    box_end
+fi
 
 # --- ZFS pools discovery ---
 
@@ -730,9 +786,15 @@ box_end
 
 if [[ -n "${OUTPUT_CSV_DIR:-}" ]]; then
     box_begin "CSV EXPORTS"
-    # Show a simple data row count (excluding header) for System CSV
+    # Row counts (excluding header)
     sys_rows=$(printf '%s\n' "$CSV_SYSTEM_DATA" | sed '/^$/d' | wc -l)
+    zfs_rows=$(printf '%s\n' "$CSV_POOLS_DATA" | sed '/^$/d' | wc -l)
+    std_rows=$(printf '%s\n' "$CSV_DISKS_DATA" | sed '/^$/d' | wc -l)
+    nvme_rows=$(printf '%s\n' "$CSV_NVME_DATA" | sed '/^$/d' | wc -l)
     box_line "System rows: ${sys_rows}"
+    box_line "ZFS rows: ${zfs_rows}"
+    box_line "Standard rows: ${std_rows}"
+    box_line "NVMe rows: ${nvme_rows}"
     box_value "System"   "$(write_csv "system.csv" "$CSV_SYSTEM_HDR" "$CSV_SYSTEM_DATA")"
     box_value "ZFS"      "$(write_csv "zfs.csv" "$CSV_POOLS_HDR" "$CSV_POOLS_DATA")"
     box_value "Standard" "$(write_csv "standard_disks.csv" "$CSV_DISKS_HDR" "$CSV_DISKS_DATA")"
