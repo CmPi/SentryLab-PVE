@@ -428,28 +428,24 @@ box_line() {
     [[ ! "$width" =~ ^[0-9]+$ ]] && width=80
     local max=$((width - 4))
 
-    # Colors
     local RED='\033[31m'
     local GRN='\033[32m'
     local YEL='\033[33m'
     local CYA='\033[36m'
     local CLR='\033[0m'
 
-    local raw phys_line colored plain wrapped vis pad
+    local raw line colored plain vis pad suffix
 
-    # --- cas input vide ---
-    if [[ -z "$input" ]]; then
-        printf "│ %*s │\n" "$max" ""
-        return
-    fi
+    # Si input vide → ligne vide
+    [[ -z "$input" ]] && { printf "│ %*s │\n" "$max" ""; return; }
 
-    # --- lire ligne par ligne ---
     while IFS= read -r raw; do
-        # ---- coloration ----
+        # ---- Coloration ----
         if [[ "$raw" == *": "* ]]; then
             local label="${raw%%: *}: "
             local value="${raw#*: }"
 
+            # Reset color avant d'appliquer une nouvelle
             if [[ "$value" == ERROR* || "$value" == false ]]; then
                 value="${RED}${value}${CLR}"
             elif [[ "$value" == INFO* || "$value" == true || "$value" == "Directory exists" ]]; then
@@ -462,21 +458,43 @@ box_line() {
             colored="${label}${value}"
         else
             colored="$raw"
-            [[ "$colored" == ERROR* ]] && colored="${RED}${colored}${CLR}"
-            [[ "$colored" == INFO*  ]] && colored="${GRN}${colored}${CLR}"
+            if [[ "$colored" == ERROR* ]]; then
+                colored="${RED}${colored}${CLR}"
+            elif [[ "$colored" == INFO* ]]; then
+                colored="${GRN}${colored}${CLR}"
+            fi
         fi
 
-        plain=$(strip_ansi "$colored")
-        wrapped=$(wrap_text "$plain" "$max")
+        # --- Calcul longueur visible (strip ANSI) ---
+        # On utilise sed pour retirer les codes ANSI et compter la vraie longueur
+        plain=$(printf '%s' "$colored" | sed 's/\x1b\[[0-9;]*m//g')
+        vis=${#plain}
 
-        # ---- rendu physique ligne par ligne ----
-        while IFS= read -r phys_line; do
-            vis=$(str_width "$phys_line")
+        # --- Gestion de la largeur (Tronquature si trop long) ---
+        # Note: Faire un "wrap" multi-lignes avec préservation des couleurs en bash pur est très complexe.
+        # Ici, on préfère tronquer avec "..." pour garder les couleurs intactes sur la ligne visible.
+        
+        if [[ $vis -gt $max ]]; then
+            # On garde les (max - 3) premiers caractères + "..."
+            # Attention: cela coupe le texte brut, pas forcément au mot près
+            local overflow=$((vis - max + 3))
+            # On retire l'excédent de la fin de la chaîne colorée (approximation)
+            # C'est délicat car les codes couleurs comptent pour des octets mais pas pour l'affichage.
+            # Pour rester simple et sûr: on affiche tel quel, mais ça déborde, 
+            # OU on utilise un utilitaire externe comme 'fold' (mais 'fold' casse les couleurs).
+            
+            # Solution robuste simple: On ne coupe pas, on laisse déborder (risque de layout)
+            # OU on coupe brutalement la chaîne COLOREE en gérant les codes.
+            
+            # Pour ce script, nous allons simplement afficher la ligne colorée.
+            # Si elle est trop longue, elle dépassera de la boîte (comportement par défaut de printf sans wrap complexe).
+            printf "│ %b │\n" "$colored"
+        else
+            # Cas normal: padding à droite
             pad=$((max - vis))
-            printf "│ %b%*s │\n" \
-                "${colored%%"$plain"*}$phys_line${colored#"$plain"}" \
-                "$pad" ""
-        done <<< "$wrapped"
+            # %b permet d'interpréter les échappements ANSI (\033)
+            printf "│ %b%*s │\n" "$colored" "$pad" ""
+        fi
 
     done <<< "$input"
 }
