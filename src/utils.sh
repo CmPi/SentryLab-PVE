@@ -152,6 +152,16 @@ mqtt_publish_retain() {
     fi
 
     if [[ "${INTERACTIVE:-false}" == "true" ]]; then
+
+        box_value "Topic" "$topic"
+        box_value "Payload" "${payload}"
+        box_value "BROKER" "$BROKER"
+        box_value "PORT" "$PORT"
+        box_value "USER" "$USER"
+        box_value "PASS" "$PASS"
+        box_value "MQTT_QOS" "${MQTT_QOS:-1}"   
+
+
         # Interactive mode: direct execution with error display
         if mosquitto_pub -h "$BROKER" -p "$PORT" \
                          -u "$USER" -P "$PASS" \
@@ -164,13 +174,6 @@ mqtt_publish_retain() {
             return 1
         fi
     else
-        box_value "Topic" "$topic"
-        box_value "Payload" "${payload}"
-        box_value "BROKER" "$BROKER"
-        box_value "PORT" "$PORT"
-        box_value "USER" "$USER"
-        box_value "PASS" "$PASS"
-        box_value "MQTT_QOS" "${MQTT_QOS:-1}"   
 
         # mosquitto_pub -h "$BROKER" -p "$PORT" \
         #               -u "$USER" -P "$PASS" \
