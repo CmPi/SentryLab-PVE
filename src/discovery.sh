@@ -115,14 +115,12 @@ if [[ "$PUSH_SYSTEM" == "true" ]]; then
             dev: $dev
         }'
     )
-    mqtt_publish_retain "$CFG_TOPIC" "$PAYLOAD"
 
-    box_line "here"
+    box_line "before"
+    mqtt_publish_retain "$CFG_TOPIC" "$PAYLOAD"
+    box_line "after"
 
     CSV_SYSTEM_DATA+="${HA_ID},CPU temperature,Température du CPU"$'\n'
-
-    box_line "there"
-
 
     # --- 2. Register Chassis temperature sensor (not CPU related, I know) ---
 

@@ -168,6 +168,7 @@ mqtt_publish_retain() {
             box_line "Published successfully" "GREEN"
             log_debug "Published (Retain) to $topic"
             rm -f "$mqtt_err"
+            box_line "return 0"
             return 0
         else
             local err_code=$?
