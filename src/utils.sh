@@ -152,27 +152,20 @@ mqtt_publish_retain() {
     fi
 
     if [[ "${INTERACTIVE:-false}" == "true" ]]; then
-        box_line "Attempt to publish (RETAIN) to $topic"
-        box_value "topic" "$topic"
-        box_value "payload" "${payload}"
-
-        # Interactive mode: capture output and display with box_line
-        local mqtt_out
+        # Interactive mode: let stderr flow naturally, capture only stdout
+        local mqtt_out mqtt_rc
         mqtt_out=$(mosquitto_pub -h "$BROKER" -p "$PORT" \
                          -u "$USER" -P "$PASS" \
-                         -t "$topic" -m "$payload" -r -q "$MQTT_QOS" 2>&1)
-        local mqtt_rc=$?
+                         -t "$topic" -m "$payload" -r -q "$MQTT_QOS" 2>&1) || mqtt_rc=$?
+        mqtt_rc=${mqtt_rc:-0}
+        
         if [[ $mqtt_rc -eq 0 ]]; then
             log_debug "Published (Retain) to $topic"
             [[ -n "$mqtt_out" ]] && box_line "$mqtt_out" "LIGHTGRAY"
             return 0
         else
-            log_error "Failed to publish to $topic"
-            if [[ -n "$mqtt_out" ]]; then
-                box_line "ERROR: $mqtt_out" "RED"
-            else
-                box_line "ERROR: Failed to publish (unknown error)" "RED"
-            fi
+            box_line "ERROR: Failed to publish to $topic (exit code: $mqtt_rc)" "RED"
+            [[ -n "$mqtt_out" ]] && box_line "$mqtt_out" "RED"
             return 1
         fi
     else
@@ -213,28 +206,24 @@ mqtt_publish_no_retain() {
     fi
 
     if [[ "${INTERACTIVE:-false}" == "true" ]]; then
-        # Interactive mode: capture output and display with box_line
-        box_line "Attempt to publish (NO-RETAIN) to $topic"
-        local mqtt_out
+        # Interactive mode: let stderr flow naturally, capture only stdout
+        local mqtt_out mqtt_rc
         mqtt_out=$(mosquitto_pub -h "$BROKER" -p "$PORT" \
                          -u "$USER" -P "$PASS" \
                          -t "$topic" -m "$payload" \
                          --will-topic "$AVAIL_TOPIC" \
                          --will-payload "offline" \
                          --will-retain \
-                         -q "$MQTT_QOS" 2>&1)
-        local mqtt_rc=$?
+                         -q "$MQTT_QOS" 2>&1) || mqtt_rc=$?
+        mqtt_rc=${mqtt_rc:-0}
+        
         if [[ $mqtt_rc -eq 0 ]]; then
             log_debug "Published (No-Retain) to $topic"
             [[ -n "$mqtt_out" ]] && box_line "$mqtt_out" "LIGHTGRAY"
             return 0
         else
-            log_error "Failed to publish to $topic"
-            if [[ -n "$mqtt_out" ]]; then
-                box_line "ERROR: $mqtt_out" "RED"
-            else
-                box_line "ERROR: Failed to publish (unknown error)" "RED"
-            fi
+            box_line "ERROR: Failed to publish to $topic (exit code: $mqtt_rc)" "RED"
+            [[ -n "$mqtt_out" ]] && box_line "$mqtt_out" "RED"
             return 1
         fi
     else
