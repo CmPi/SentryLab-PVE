@@ -47,11 +47,11 @@ if [[ "$PUSH_SYSTEM" == "true" ]]; then
         fi
         SN=$(cat "/sys/class/nvme/$nvme_dev/serial" 2>/dev/null | tr -d ' ')
         if [[ -z "$SN" ]]; then
-            log_debug "Could not retrieve serial number for $nvme_dev"
+            box_line "ERROR; Could not retrieve serial number for $nvme_dev"
             continue
         fi
         SN_LOWER=$(echo "$SN" | tr '[:upper:]' '[:lower:]')
-        log_debug "Processing $hw_num -> $nvme_dev (S/N: $SN)"
+        box_value "$hw_num" "$nvme_dev (S/N: $SN)"
         
         temp_count=0
         for t_file in "$hw_path"/temp*_input; do
