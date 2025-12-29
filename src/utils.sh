@@ -154,15 +154,20 @@ mqtt_publish_retain() {
     if [[ "${INTERACTIVE:-false}" == "true" ]]; then
         # Interactive mode: let stderr flow naturally, capture only stdout
         local mqtt_out mqtt_rc
-        mqtt_out=$(mosquitto_pub -h "$BROKER" -p "$PORT" \
+        set +e
+        mqtt_out=$(timeout 10 mosquitto_pub -h "$BROKER" -p "$PORT" \
                          -u "$USER" -P "$PASS" \
-                         -t "$topic" -m "$payload" -r -q "$MQTT_QOS" 2>&1) || mqtt_rc=$?
-        mqtt_rc=${mqtt_rc:-0}
+                         -t "$topic" -m "$payload" -r -q "$MQTT_QOS" 2>&1)
+        mqtt_rc=$?
+        set -e
         
         if [[ $mqtt_rc -eq 0 ]]; then
             log_debug "Published (Retain) to $topic"
             [[ -n "$mqtt_out" ]] && box_line "$mqtt_out" "LIGHTGRAY"
             return 0
+        elif [[ $mqtt_rc -eq 124 ]]; then
+            box_line "ERROR: Timeout publishing to $topic (broker not responding)" "RED"
+            return 1
         else
             box_line "ERROR: Failed to publish to $topic (exit code: $mqtt_rc)" "RED"
             [[ -n "$mqtt_out" ]] && box_line "$mqtt_out" "RED"
@@ -208,19 +213,24 @@ mqtt_publish_no_retain() {
     if [[ "${INTERACTIVE:-false}" == "true" ]]; then
         # Interactive mode: let stderr flow naturally, capture only stdout
         local mqtt_out mqtt_rc
-        mqtt_out=$(mosquitto_pub -h "$BROKER" -p "$PORT" \
+        set +e
+        mqtt_out=$(timeout 10 mosquitto_pub -h "$BROKER" -p "$PORT" \
                          -u "$USER" -P "$PASS" \
                          -t "$topic" -m "$payload" \
                          --will-topic "$AVAIL_TOPIC" \
                          --will-payload "offline" \
                          --will-retain \
-                         -q "$MQTT_QOS" 2>&1) || mqtt_rc=$?
-        mqtt_rc=${mqtt_rc:-0}
+                         -q "$MQTT_QOS" 2>&1)
+        mqtt_rc=$?
+        set -e
         
         if [[ $mqtt_rc -eq 0 ]]; then
             log_debug "Published (No-Retain) to $topic"
             [[ -n "$mqtt_out" ]] && box_line "$mqtt_out" "LIGHTGRAY"
             return 0
+        elif [[ $mqtt_rc -eq 124 ]]; then
+            box_line "ERROR: Timeout publishing to $topic (broker not responding)" "RED"
+            return 1
         else
             box_line "ERROR: Failed to publish to $topic (exit code: $mqtt_rc)" "RED"
             [[ -n "$mqtt_out" ]] && box_line "$mqtt_out" "RED"
