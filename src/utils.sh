@@ -36,11 +36,6 @@ log_info() {
     echo "[INFO] $(date '+%Y-%m-%d %H:%M:%S') - $*"
 }
 
-# Log warning messages
-log_warn() {
-    echo "[WARN] $(date '+%Y-%m-%d %H:%M:%S') - $*" >&2
-}
-
 # ==============================================================================
 # CONFIGURATION LOADING
 # ==============================================================================
@@ -112,6 +107,29 @@ validate_config() {
 
 # Load configuration
 load_config
+
+# Verify required companion scripts exist based on enabled features
+check_package_integrity() {
+    local dir
+    dir="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+    local missing=()
+
+    [[ "${PUSH_SYSTEM:-false}" == "true" ]]      && [[ ! -f "$dir/system.sh" ]]      && missing+=("system.sh")
+    [[ "${PUSH_NVME_TEMP:-false}" == "true" ]]   && [[ ! -f "$dir/temp.sh" ]]        && missing+=("temp.sh")
+    [[ "${PUSH_NVME_WEAR:-false}" == "true" ]]   && [[ ! -f "$dir/wear.sh" ]]        && missing+=("wear.sh")
+    [[ "${PUSH_NVME_HEALTH:-false}" == "true" ]] && [[ ! -f "$dir/health.sh" ]]      && missing+=("health.sh")
+    [[ "${PUSH_ZFS:-false}" == "true" ]]         && [[ ! -f "$dir/zfs.sh" ]]         && missing+=("zfs.sh")
+    [[ "${PUSH_NON_ZFS:-false}" == "true" ]]     && [[ ! -f "$dir/non-zfs.sh" ]]     && missing+=("non-zfs.sh")
+
+    if [[ ${#missing[@]} -gt 0 ]]; then
+        log_error "Missing required scripts for enabled features: ${missing[*]}"
+        log_error "Restore these files or disable corresponding PUSH_* flags in sentrylab.conf"
+        exit 1
+    fi
+}
+
+# Run integrity check immediately after config load
+check_package_integrity
 
 # ==============================================================================
 # MQTT TOPICS CONFIGURATION

@@ -22,45 +22,45 @@ else
     exit 1
 fi
 
-box_begin "ACTIVE MONITORING CYCLE"
+box_title "ACTIVE MONITORING CYCLE"
 
 # Track if any monitoring is enabled
 MONITORING_ENABLED=false
 
 # Optional: Check if disks are already awake (uncomment to enable)
 # if ! are_disks_awake; then
-#     log_info "Disks are sleeping, skipping active monitoring to preserve power"
+#     box_line "Disks are sleeping, skipping active monitoring to preserve power"
 #     exit 0
 # fi
 
 # --- ZFS Pool Monitoring ---
 if [[ "${PUSH_ZFS:-false}" == "true" ]]; then
-    box_line "Running ZFS metrics collection..."
     if MONITOR_MODE=active "$SCRIPT_DIR/zfs.sh"; then
-        box_line "✓ ZFS metrics collected"
         MONITORING_ENABLED=true
     else
-        box_line "✗ ZFS metrics collection failed"
+        box_begin "ZFS Pool"
+        box_line "ERROR: ✗ ZFS metrics collection failed"
+        box_end
     fi
 else
+    box_begin "ZFS Pool"
     box_line "SKIP: ZFS monitoring disabled (PUSH_ZFS=false)"
+    box_end
 fi
 
 # --- Non-ZFS Disk Monitoring ---
 if [[ "${PUSH_NON_ZFS:-false}" == "true" ]]; then
-    box_line "Running non-ZFS disk collection..."
-    if [[ -f "$SCRIPT_DIR/non-zfs.sh" ]]; then
-        if MONITOR_MODE=active "$SCRIPT_DIR/non-zfs.sh"; then
-            log_debug "✓ Non-ZFS disk metrics collected"
-            MONITORING_ENABLED=true
-        else
-            log_error "✗ Non-ZFS disk collection failed"
-        fi
+    if MONITOR_MODE=active "$SCRIPT_DIR/non-zfs.sh"; then
+        MONITORING_ENABLED=true
     else
-        box_line "SKIP: non-zfs.sh not found, skipping"
+        box_begin "Non-ZFS Disks"
+        box_line "ERROR: ✗ Non-ZFS disk collection failed"
+        box_end
     fi
 else
+    box_begin "Non-ZFS Disks"
     box_line "SKIP: Non-ZFS disk monitoring disabled (PUSH_NON_ZFS=false)"
+    box_end
 fi
 
 # --- NVMe Wear Monitoring ---
