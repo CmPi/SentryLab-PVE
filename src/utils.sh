@@ -156,7 +156,7 @@ mqtt_publish_retain() {
 
     if [[ "${INTERACTIVE:-false}" == "true" ]]; then
         box_value "Topic" "$topic"
-        box_value "Payload" "${payload:0:100}"
+        box_value "Payload" "${payload}"
         # Interactive mode: capture stderr to display errors
         local mqtt_err
         mqtt_err=$(mktemp)
