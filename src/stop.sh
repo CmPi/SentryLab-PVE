@@ -127,7 +127,7 @@ if [ -d "$SYSTEMD_STAGING" ]; then
             filename=$(basename "$file")
             cp "$file" "$BACKUP_DIR/" 2>/dev/null || true
             rm -f "$file"
-            ((backed_up_count++))
+            backed_up_count=$((backed_up_count + 1))
         fi
     done
     
