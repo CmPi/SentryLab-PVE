@@ -153,6 +153,8 @@ mqtt_publish_retain() {
 
     if [[ "${INTERACTIVE:-false}" == "true" ]]; then
         box_line "Attempt to publish (RETAIN) to $topic"
+        box_value "topic" "$topic"
+        box_value "payload" "${payload}"
 
         # Interactive mode: capture output and display with box_line
         local mqtt_out
