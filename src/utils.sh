@@ -437,11 +437,14 @@ box_line() {
 
     local raw phys_line colored plain wrapped vis pad
 
-    # Si input vide → forcer une ligne vide
-    [[ -z "$input" ]] && input=""
+    # --- cas input vide ---
+    if [[ -z "$input" ]]; then
+        printf "│ %*s │\n" "$max" ""
+        return
+    fi
 
-    while IFS= read -r raw || [[ -z "$raw" ]]; do
-
+    # --- lire ligne par ligne ---
+    while IFS= read -r raw; do
         # ---- coloration ----
         if [[ "$raw" == *": "* ]]; then
             local label="${raw%%: *}: "
@@ -466,8 +469,8 @@ box_line() {
         plain=$(strip_ansi "$colored")
         wrapped=$(wrap_text "$plain" "$max")
 
-        # ---- rendu ----
-        while IFS= read -r phys_line || [[ -z "$phys_line" ]]; do
+        # ---- rendu physique ligne par ligne ----
+        while IFS= read -r phys_line; do
             vis=$(str_width "$phys_line")
             pad=$((max - vis))
             printf "│ %b%*s │\n" \
@@ -477,6 +480,7 @@ box_line() {
 
     done <<< "$input"
 }
+
 
 
 
