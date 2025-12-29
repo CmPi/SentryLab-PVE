@@ -541,6 +541,20 @@ get_color_code() {
     esac
 }
 
+# Pad text to a target display width (uses str_width for UTF-8)
+pad_to_width() {
+    local text="${1-}"
+    local target="${2-0}"
+    local width
+    width=$(str_width "$text")
+    local out="$text"
+    while (( width < target )); do
+        out+=" "
+        ((width++))
+    done
+    printf '%s' "$out"
+}
+
 # Print a label:value pair. The label is kept on the first line and the value is colored.
 # The value may wrap across multiple lines; wrapped lines start aligned at the value column
 # Usage: box_value "Label" "Some potentially long value" [width]
@@ -591,18 +605,18 @@ box_value() {
     local first=true
     while IFS= read -r line || [[ -n "$line" ]]; do
         if [[ "$first" == true ]]; then
-            # pad line to available width, then apply color/reset
+            # pad line to available width (UTF-8 aware), then apply color/reset
             local padded_line
-            printf -v padded_line "%-*s" "$avail" "$line"
+            padded_line=$(pad_to_width "$line" "$avail")
             printf "│ %s%b%s%b │\n" "$label_txt" "$color" "$padded_line" "$CLR"
             first=false
         else
-            # subsequent lines: indent to value column, pad, then color/reset
+            # subsequent lines: indent to value column, pad (UTF-8 aware), then color/reset
             local indent=""
             # create spaces equal to label width
             for ((i=0;i<label_w;i++)); do indent+=" "; done
             local padded_line
-            printf -v padded_line "%-*s" "$avail" "$line"
+            padded_line=$(pad_to_width "$line" "$avail")
             printf "│ %s%b%s%b │\n" "$indent" "$color" "$padded_line" "$CLR"
         fi
     done <<< "$wrapped_value"
@@ -654,7 +668,7 @@ box_line() {
     wrapped=$(wrap_text "$input" "$inner")
     while IFS= read -r line || [[ -n "$line" ]]; do
         local padded_line
-        printf -v padded_line "%-*s" "$inner" "$line"
+        padded_line=$(pad_to_width "$line" "$inner")
         printf "│ %b%s%b │\n" "$color" "$padded_line" "$CLR"
     done <<< "$wrapped"
 }
