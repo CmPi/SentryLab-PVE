@@ -24,11 +24,15 @@ SentryLab-PVE/
 ├── src/                       # Core engine
 │   ├── sentrylab.conf         # Central configuration (MQTT, Hostname)
 │   ├── utils.sh               # Shared functions
-│   ├── discovery.sh           # Activation tool (enable all the timers)
-│   ├── temp.sh                # Thermal monitoring
-│   ├── zfs.sh                 # ZFS Health & Space
+│   ├── discovery.sh           # Discover and publish the sensors with their definitions 
+│   ├── system.sh              # System metrics
+│   ├── temp.sh                # NVMEs Thermal monitoring
 │   ├── wear.sh                # NVMe Wear level
 │   ├── health.sh              # NVMe Smart Health
+│   ├── zfs.sh                 # ZFS Health & Space
+│   ├── non-zfs.sh             # other storage spaces
+│   ├── monitor-passive.sh     # call previous scripts not impacting devices sleeping status 
+│   ├── monitor-active.sh      # call previous scripts impacting devices sleeping status (e.g. requiring SMART functions)
 │   ├── *.service              # Systemd service units
 │   ├── *.timer                # Systemd scheduling units
 │   ├── start.sh               # Activation tool (enable all the timers)

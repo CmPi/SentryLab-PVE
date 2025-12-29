@@ -388,42 +388,9 @@ box_begin() {
 # Retourne la largeur affichée réelle (Unicode-safe)
 str_width() {
     local s="$1"
-    # D'abord, nettoyer les codes ANSI
+    # Remove ANSI and measure character length using current UTF-8 locale
     s=$(strip_ansi "$s")
-    
-    # Compter les caractères en tenant compte de l'UTF-8
-    local w=0
-    local len=${#s}
-    local i=0
-    
-    while ((i < len)); do
-        local c="${s:i:1}"
-        local byte=$(printf '%d' "'$c")
-        
-        # Détection UTF-8 multi-octets
-        if ((byte >= 240)); then
-            # 4 octets (emoji, etc.) - largeur 2
-            ((w += 2))
-            ((i += 4))
-        elif ((byte >= 224)); then
-            # 3 octets (la plupart des caractères CJK) - largeur 2
-            ((w += 2))
-            ((i += 3))
-        elif ((byte >= 192)); then
-            # 2 octets - largeur 1 généralement
-            ((w += 1))
-            ((i += 2))
-        elif ((byte >= 32 && byte <= 126)); then
-            # ASCII imprimable - largeur 1
-            ((w += 1))
-            ((i += 1))
-        else
-            # Autres (contrôle, etc.) - ignorer
-            ((i += 1))
-        fi
-    done
-    
-    echo "$w"
+    echo "${#s}"
 }
 
 wrap_text() {
