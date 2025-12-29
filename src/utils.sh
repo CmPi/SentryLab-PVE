@@ -332,12 +332,14 @@ box_title() {
     printf "╚"; printf '═%.0s' $(seq 1 $inner); printf "╝\n"
 }
 
+# Supprime les codes ANSI (codes couleur)
 strip_ansi() {
     local s="$1"
     # Utilise un pattern plus robuste pour les séquences ANSI
     s="${s//$'\e'\[*([0-9;])m/}"
     printf '%s' "$s"
 }
+
 
 # Begin a box section with a title (Visible only in DEBUG mode)
 # Usage: box_begin "Title" [width]
@@ -374,18 +376,21 @@ box_begin() {
     printf "┐\n"
 }
 
-# retourne la largeur affichée réelle (Unicode-safe)
+# Retourne la largeur affichée réelle (Unicode-safe)
 str_width() {
     local s="$1"
     # D'abord, nettoyer les codes ANSI
     s=$(strip_ansi "$s")
+    
     # Compter les caractères en tenant compte de l'UTF-8
     local w=0
     local len=${#s}
     local i=0
+    
     while ((i < len)); do
         local c="${s:i:1}"
         local byte=$(printf '%d' "'$c")
+        
         # Détection UTF-8 multi-octets
         if ((byte >= 240)); then
             # 4 octets (emoji, etc.) - largeur 2
@@ -408,55 +413,51 @@ str_width() {
             ((i += 1))
         fi
     done
+    
     echo "$w"
 }
 
 wrap_text() {
     local text="$1"
-    local max="${2:-80}"
+    local max="$2"
+    [[ -z "$max" || "$max" -le 0 ]] && max=80
+    
     # Cas chaîne vide
     [[ -z "$text" ]] && { echo ""; return 0; }
+    
     local out=""
+    
     # Traiter ligne par ligne (pour respecter les sauts de ligne existants)
     while IFS= read -r line || [[ -n "$line" ]]; do
         # Si on a déjà du contenu, ajouter un saut de ligne
         [[ -n "$out" ]] && out+=$'\n'
+        
         # Si la ligne est vide, la conserver
         if [[ -z "$line" ]]; then
             continue
         fi
+        
         local cur=""
         local words=()
+        
         # Découper en mots (gestion des espaces multiples)
         read -ra words <<< "$line"
+        
         for word in "${words[@]}"; do
             [[ -z "$word" ]] && continue
-            local test_len
-            if [[ -n "$cur" ]]; then
-                # Test avec espace
-                test_len=$(str_width "$cur $word")
-            else
-                # Premier mot
-                test_len=$(str_width "$word")
-            fi
-            if ((test_len <= max)); then
-                # Ça rentre
+            
+            local word_len=$(str_width "$word")
+            
+            # Si le mot seul est trop long, il faut le couper
+            if ((word_len > max)); then
+                # Vider la ligne courante d'abord
                 if [[ -n "$cur" ]]; then
-                    cur+=" $word"
-                else
-                    cur="$word"
-                fi
-            else
-                # Ça dépasse : valider la ligne courante
-                if [[ -n "$cur" ]]; then
-                    out+="$cur"$'\n'
-                fi
-                cur="$word"
-            fi
-        done
+                    out+="$cur"
+        
         # Ajouter le reste
         [[ -n "$cur" ]] && out+="$cur"
     done <<< "$text"
+    
     printf '%s' "$out"
 }
 
@@ -525,7 +526,6 @@ box_line() {
 
     done <<< "$input"
 }
-
 
 
 # End a box section
