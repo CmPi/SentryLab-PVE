@@ -4,8 +4,8 @@
 # @file /usr/local/bin/sentrylab/zfs.sh
 # @author CmPi <cmpi@webe.fr>
 # @brief Collects ZFS pool health and metrics and publishes to MQTT
-# @date 2025-12-27
-# @version 1.0.362.4
+# @date 2025-12-29
+# @version 1.0.362.5
 # @usage Run periodically (e.g., every 5 minutes via cron or systemd timer)
 # @notes * make it executable as usual using the command:
 #          chmod +x /usr/local/bin/sentrylab/zfs.sh
@@ -27,6 +27,10 @@ else
     echo "ERROR: Required file '$SCRIPT_DIR/utils.sh' not found." >&2
     exit 1
 fi
+
+# Monitoring mode: active (default) or passive
+MONITOR_MODE="${MONITOR_MODE:-${1:-active}}"
+MONITOR_MODE=${MONITOR_MODE,,}
 
 box_begin "ZFS Pools Metrics Collection"
 
@@ -58,6 +62,25 @@ if [[ "${PUSH_ZFS:-false}" == "true" ]]; then
         SIZE=$(zpool list -H -o size -p "$pool" 2>/dev/null || echo "0")
         ALLOC=$(zpool list -H -o allocated -p "$pool" 2>/dev/null || echo "0")
         FREE=$(zpool list -H -o free -p "$pool" 2>/dev/null || echo "0")
+
+        # Skip sleeping pools in passive mode (best-effort based on member devices)
+        if [[ "$MONITOR_MODE" == "passive" ]]; then
+            POOL_DEVS=$(zpool status -P "$pool" 2>/dev/null | awk '/^\s*\/dev\//{print $1}' | sort -u)
+            if [[ -n "$POOL_DEVS" ]]; then
+                asleep=false
+                while IFS= read -r dev; do
+                    [[ -z "$dev" ]] && continue
+                    if ! device_is_awake "$dev"; then
+                        asleep=true
+                        break
+                    fi
+                done <<< "$POOL_DEVS"
+                if [[ "$asleep" == true ]]; then
+                    box_line "SKIP: Pool $pool skipped (device sleeping, passive mode)"
+                    continue
+                fi
+            fi
+        fi
         
         # Calculer le pourcentage d'utilisation
         if [[ "$SIZE" -gt 0 ]]; then

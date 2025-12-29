@@ -143,7 +143,7 @@ mqtt_publish_retain() {
     fi
 
     if [[ -z "$payload" ]]; then
-        log_warn "MQTT payload is empty for topic: $topic"
+        box_line "WARNING: MQTT payload is empty for topic: $topic"
         return 1
     fi
 
@@ -368,6 +368,27 @@ command_exists() {
 check_dependencies() {
     local exit_if_missing="${1:-true}"
 
+
+# Check if a block device appears awake (best-effort, defaults to awake if unknown)
+device_is_awake() {
+    local dev="$1"
+    [[ -z "$dev" ]] && return 0
+    dev=${dev#/dev/}
+    local sys="/sys/block/$dev"
+    [[ -d "$sys" ]] || return 0
+
+    local state=""
+    [[ -f "$sys/device/state" ]] && state=$(<"$sys/device/state")
+    if [[ -z "$state" && -f "$sys/device/power/runtime_status" ]]; then
+        state=$(<"$sys/device/power/runtime_status")
+    fi
+
+    state=${state,,}
+    case "$state" in
+        running|active|ready|unknown|"") return 0 ;;
+        *) return 1 ;;
+    esac
+}
     local required_commands=("mosquitto_pub" "jq" "grep" "bc")
 
     [[ "${PUSH_ZFS:-false}" == "true" ]] && required_commands+=("zpool")

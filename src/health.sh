@@ -4,8 +4,8 @@
 # @file /usr/local/bin/sentrylab/health.sh
 # @author CmPi <cmpi@webe.fr>
 # @brief Collects NVMe health status and publishes to MQTT
-# @date 2025-12-26
-# @version 1.0.362.4
+# @date 2025-12-29
+# @version 1.0.362.5
 # @usage Run periodically (e.g., every hour via cron or systemd timer)
 # @notes * make it executable as usual
 #          chmod +x /usr/local/bin/*.sh
@@ -95,6 +95,7 @@ if [[ "${PUSH_NVME_HEALTH:-false}" == "true" ]]; then
         fi
     done
 
+    # Collected in nightly active cycle; retain for availability
     mqtt_publish_retain "$HEALTH_TOPIC" "$JSON"
 
     box_end

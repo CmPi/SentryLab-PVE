@@ -5,7 +5,7 @@
 # @author CmPi <cmpi@webe.fr>
 # @brief Collects NVMe wear levels and publishes to MQTT
 # @date 2025-12-29
-# @version 1.0.362.5
+# @version 1.0.362.6
 # @usage Run periodically (e.g., every hour via cron or systemd timer)
 # @notes * make it executable as usual
 #          chmod +x /usr/local/bin/sentrylab/wear.sh
@@ -88,7 +88,7 @@ if [[ "${PUSH_NVME_WEAR:-false}" == "true" ]]; then
     done    
 
 
-    # --- Publish JSON to MQTT ---
+    # --- Publish JSON to MQTT (retained; collected in active cycle) ---
     if [[ "$DEBUG" != "true" ]]; then
         mqtt_publish_retain "$WEAR_TOPIC" "$JSON"
     else

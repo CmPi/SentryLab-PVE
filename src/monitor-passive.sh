@@ -4,8 +4,8 @@
 # @file /usr/local/bin/sentrylab/passive.sh
 # @author CmPi <cmpi@webe.fr>
 # @brief Orchestrator for passive monitoring (no disk wake)
-# @date 2025-12-28
-# @version 1.1.361
+# @date 2025-12-29
+# @version 1.1.363
 # @usage Called by sentrylab-passive.timer every 3-5 minutes
 # @notes Respects PUSH_* flags from sentrylab.conf
 #
@@ -21,7 +21,7 @@ else
     exit 1
 fi
 
-log_info "=== PASSIVE MONITORING CYCLE START ==="
+box_begin "PASSIVE MONITORING CYCLE START"
 
 # Track if any monitoring is enabled
 MONITORING_ENABLED=false
@@ -52,38 +52,42 @@ else
     log_debug "NVMe temperature monitoring disabled (PUSH_NVME_TEMP=false)"
 fi
 
-# --- NVMe Wear Monitoring ---
-if [[ "${PUSH_NVME_WEAR:-false}" == "true" ]]; then
-    log_debug "Running NVMe wear collection..."
-    if "$SCRIPT_DIR/wear.sh"; then
-        log_debug "✓ NVMe wear collected"
+# --- ZFS Pool Monitoring (passive: skip sleeping devices) ---
+if [[ "${PUSH_ZFS:-false}" == "true" ]]; then
+    log_debug "Running ZFS metrics collection (passive)..."
+    if MONITOR_MODE=passive "$SCRIPT_DIR/zfs.sh"; then
+        log_debug "✓ ZFS metrics collected (passive)"
         MONITORING_ENABLED=true
     else
-        log_error "✗ NVMe wear collection failed"
+        log_error "✗ ZFS metrics collection failed (passive)"
     fi
 else
-    log_debug "NVMe wear monitoring disabled (PUSH_NVME_WEAR=false)"
+    log_debug "ZFS monitoring disabled (PUSH_ZFS=false)"
 fi
 
-# --- NVMe Health Monitoring ---
-if [[ "${PUSH_NVME_HEALTH:-false}" == "true" ]]; then
-    log_debug "Running NVMe health collection..."
-    if "$SCRIPT_DIR/health.sh"; then
-        log_debug "✓ NVMe health collected"
-        MONITORING_ENABLED=true
+# --- Non-ZFS Disk Monitoring (passive: skip sleeping devices) ---
+if [[ "${PUSH_NON_ZFS:-false}" == "true" ]]; then
+    log_debug "Running non-ZFS disk collection (passive)..."
+    if [[ -f "$SCRIPT_DIR/non-zfs.sh" ]]; then
+        if MONITOR_MODE=passive "$SCRIPT_DIR/non-zfs.sh"; then
+            log_debug "✓ Non-ZFS disk metrics collected (passive)"
+            MONITORING_ENABLED=true
+        else
+            log_error "✗ Non-ZFS disk collection failed (passive)"
+        fi
     else
-        log_error "✗ NVMe health collection failed"
+        log_warn "non-zfs.sh not found, skipping"
     fi
 else
-    log_debug "NVMe health monitoring disabled (PUSH_NVME_HEALTH=false)"
+    log_debug "Non-ZFS disk monitoring disabled (PUSH_NON_ZFS=false)"
 fi
 
 # --- Warning if nothing is enabled ---
 if [[ "$MONITORING_ENABLED" == "false" ]]; then
     log_warn "No passive monitoring enabled in sentrylab.conf"
-    log_warn "Enable at least one of: PUSH_SYSTEM, PUSH_NVME_TEMP, PUSH_NVME_WEAR, PUSH_NVME_HEALTH"
+    log_warn "Enable at least one of: PUSH_SYSTEM, PUSH_NVME_TEMP, PUSH_ZFS, PUSH_NON_ZFS"
 fi
 
-log_info "=== PASSIVE MONITORING CYCLE COMPLETE ==="
+box_end
 
 exit 0
