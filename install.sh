@@ -26,6 +26,7 @@ echo "--- SentryLab Installation ---"
 
 # 1. Create Directories
 mkdir -p "$DEST_DIR"
+mkdir -p "$DEST_DIR/systemd"
 mkdir -p "$EXPORT_DIR"
 
 # 2. Deploy Scripts from ./src
@@ -38,7 +39,18 @@ else
     exit 1
 fi
 
-# 3. Deploy Config (Template)
+# 3. Deploy Services & Timers to systemd subfolder
+echo "Staging systemd services and timers to $DEST_DIR/systemd..."
+if [ -d "./src" ]; then
+    cp ./src/*.service "$DEST_DIR/systemd/" 2>/dev/null || true
+    cp ./src/*.timer "$DEST_DIR/systemd/" 2>/dev/null || true
+    chmod 644 "$DEST_DIR/systemd"/*.service "$DEST_DIR/systemd"/*.timer 2>/dev/null || true
+else
+    echo "ERROR: ./src directory not found for services and timers!"
+    exit 1
+fi
+
+# 4. Deploy Config (Template)
 if [ ! -f "$CONF_FILE" ]; then
     echo "Installing configuration to $CONF_FILE..."
     cp ./sentrylab.conf "$CONF_FILE"
@@ -47,11 +59,11 @@ else
     echo "Configuration exists at $CONF_FILE. Skipping overwrite."
 fi
 
-# 4. Deploy Services & Timers
-
-
-
-
-
+echo ""
 echo "Installation complete."
-echo "Next step: Update /etc/sentrylab.conf with your settings."
+echo ""
+echo "Next steps:"
+echo "  1. Update $CONF_FILE with your settings"
+echo "  2. Test in DEBUG mode: DEBUG=true $DEST_DIR/discovery.sh"
+echo "  3. When ready, activate services: $DEST_DIR/start.sh"
+echo ""
