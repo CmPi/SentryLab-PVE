@@ -86,25 +86,18 @@ if [[ "$PUSH_SYSTEM" == "true" ]]; then
     HA_ID="${HOST_NAME}_cpu_temp"
     HA_LABEL="Température du CPU"
     CFG_TOPIC="homeassistant/sensor/${HA_ID}/config"
-    PAYLOAD=$(jq -n \
+    PAYLOAD=$(jq -n -c \
         --arg name "$HA_LABEL" \
         --arg unique_id "$HA_ID" \
         --arg stat_t "$SYSTEM_TOPIC" \
         --arg val_tpl '{{ value_json.cpu }}' \
-        --arg unit "°C" \
-        --arg icon "mdi:thermometer" \
-        --arg dev_cla "temperature" \
         --arg availability "$AVAIL_TOPIC" \
         --argjson dev "$DEVICE_JSON" \
-        '{
-            name: $name,
-            unique_id: $unique_id,
-            object_id: $unique_id,
+        '{ name: $name, unique_id: $unique_id, object_id: $unique_id,
             state_topic: $stat_t,
             value_template: $val_tpl,
-            unit_of_measurement: $unit,
-            icon: $icon,
-            device_class: $dev_cla,
+            unit_of_measurement: "°C", icon: "mdi:thermometer",
+            device_class: "temperature",
             availability_topic: $availability,        
             dev: $dev
         }'
@@ -120,7 +113,7 @@ if [[ "$PUSH_SYSTEM" == "true" ]]; then
     HA_ID="${HOST_NAME}_chassis_temp"
     HA_LABEL="Température du chassis"
     CFG_TOPIC="homeassistant/sensor/${HA_ID}/config"
-    PAYLOAD=$(jq -n \
+    PAYLOAD=$(jq -n -c \
         --arg name "$HA_LABEL" \
         --arg unique_id "$HA_ID" \
         --arg stat_t "$SYSTEM_TOPIC" \
@@ -253,7 +246,6 @@ for hw_path in /sys/class/hwmon/hwmon*; do
         )
         mqtt_publish_retain "$CFG_TOPIC" "$PAYLOAD"
         CSV_LINES+="${HOST_NAME}_${HA_ID},Wear,\"${HA_LABEL}\",${SN},${NVME_SLOT_ID}"$'\n'
-    else
     fi
 
     if [[ "$PUSH_NVME_HEALTH" == "true" ]]; then
@@ -284,7 +276,6 @@ for hw_path in /sys/class/hwmon/hwmon*; do
         )
         mqtt_publish_retain "$CFG_TOPIC" "$PAYLOAD"
         CSV_LINES+="${HOST_NAME}_${HA_ID},Health,\"${HA_LABEL}\",${SN},${NVME_SLOT_ID}"$'\n'
-    else
     fi
 
     if [[ "$PUSH_NVME_TEMP" == "true" ]]; then
@@ -331,7 +322,6 @@ for hw_path in /sys/class/hwmon/hwmon*; do
             CSV_LINES+="${HOST_NAME}_${HA_ID},${label},\"${HA_LABEL}\",${SN},${NVME_SLOT_ID}"$'\n'
             log_debug "  Registered NVMe temperature sensor: $label"
         done
-    else
     fi
 
 done
