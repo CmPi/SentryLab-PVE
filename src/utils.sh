@@ -452,7 +452,60 @@ wrap_text() {
             if ((word_len > max)); then
                 # Vider la ligne courante d'abord
                 if [[ -n "$cur" ]]; then
-                    out+="$cur"
+                    out+="$cur"$'\n'
+                    cur=""
+                fi
+                
+                # Couper le mot en morceaux de max caractères
+                local remaining="$word"
+                while [[ -n "$remaining" ]]; do
+                    local chunk=""
+                    local chunk_w=0
+                    local i=0
+                    
+                    while ((i < ${#remaining} && chunk_w < max)); do
+                        local char="${remaining:i:1}"
+                        local char_w=$(str_width "$char")
+                        if ((chunk_w + char_w <= max)); then
+                            chunk+="$char"
+                            ((chunk_w += char_w))
+                            ((i++))
+                        else
+                            break
+                        fi
+                    done
+                    
+                    if [[ -n "$chunk" ]]; then
+                        out+="$chunk"
+                        # Ajouter newline seulement s'il reste du texte
+                        [[ ${#remaining} -gt $i ]] && out+=
+                continue
+            fi
+            
+            local test_len
+            if [[ -n "$cur" ]]; then
+                # Test avec espace
+                test_len=$(str_width "$cur $word")
+            else
+                # Premier mot
+                test_len=$word_len
+            fi
+            
+            if ((test_len <= max)); then
+                # Ça rentre
+                if [[ -n "$cur" ]]; then
+                    cur+=" $word"
+                else
+                    cur="$word"
+                fi
+            else
+                # Ça dépasse : valider la ligne courante
+                if [[ -n "$cur" ]]; then
+                    out+="$cur"$'\n'
+                fi
+                cur="$word"
+            fi
+        done
         
         # Ajouter le reste
         [[ -n "$cur" ]] && out+="$cur"
@@ -484,8 +537,8 @@ box_line() {
 
     # --- lire ligne par ligne ---
     while IFS= read -r raw || [[ -n "$raw" ]]; do
-        # ---- déterminer la couleur ----
-        local color="" label value
+        # ---- déterminer la couleur et séparer label/value ----
+        local color="" label="" value=""
         if [[ "$raw" == *": "* ]]; then
             label="${raw%%: *}: "
             value="${raw#*: }"
@@ -500,6 +553,7 @@ box_line() {
                 color="$CYA"
             fi
         else
+            # Pas de séparation label:value
             if [[ "$raw" == ERROR* ]]; then
                 color="$RED"
             elif [[ "$raw" == INFO* ]]; then
@@ -511,22 +565,30 @@ box_line() {
         local wrapped=$(wrap_text "$raw" "$max")
 
         # ---- rendu physique ligne par ligne ----
+        local first_line=true
         while IFS= read -r phys_line || [[ -n "$phys_line" ]]; do
             local vis=$(str_width "$phys_line")
             local pad=$((max - vis))
             [[ $pad -lt 0 ]] && pad=0
             
-            # Appliquer la couleur à toute la ligne
-            if [[ -n "$color" ]]; then
+            # Appliquer la couleur uniquement après le label sur la première ligne
+            if [[ -n "$label" ]] && [[ "$first_line" == true ]]; then
+                # Première ligne avec label:value
+                local label_len=$(str_width "$label")
+                local colored_part="${phys_line:${#label}}"
+                printf "│ %b%b%b%b%*s │\n" "$label" "$color" "$colored_part" "$CLR" "$pad" ""
+                first_line=false
+            elif [[ -n "$color" ]]; then
+                # Ligne sans label ou lignes suivantes
                 printf "│ %b%b%b%*s │\n" "$color" "$phys_line" "$CLR" "$pad" ""
             else
+                # Pas de couleur
                 printf "│ %b%*s │\n" "$phys_line" "$pad" ""
             fi
         done <<< "$wrapped"
 
     done <<< "$input"
 }
-
 
 # End a box section
 # Usage: box_end [width]

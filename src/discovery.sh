@@ -563,6 +563,20 @@ if [[ "$PUSH_NON_ZFS" == "true" ]]; then
         HA_FREE_ID="${HOST_NAME}_disk_${DISK_ID}_free_bytes"
         HA_SIZE_ID="${HOST_NAME}_disk_${DISK_ID}_size_bytes"
 
+        # Skip non-pertinent pseudo or tiny filesystems (eg. efivars)
+        case "$fstype" in
+            efivarfs|proc|sysfs|devpts|cgroup*|debugfs|tracefs|configfs|squashfs|overlay)
+                box_line "SKIP: non-pertinent fstype $fstype for $target"
+                continue
+                ;;
+        esac
+
+        # Skip mountpoints under sys, proc, dev, run (commonly ephemeral or system)
+        if [[ "$target" == /sys/* || "$target" == /proc/* || "$target" == /dev/* || "$target" == /run/* ]]; then
+            box_line "SKIP: mountpoint $target appears system-managed"
+            continue
+        fi
+
         # 1. Publication MQTT (Seulement le brut)
         # Capteur Libre
         PAYLOAD_F=$(jq -n --arg name "Libre ${target}" --arg id "$HA_FREE_ID" --arg st "$DISK_TOPIC" --arg v "value_json.${DISK_ID}_free_bytes" --arg av "$AVAIL_TOPIC" --argjson dev "$DEVICE_JSON" \
