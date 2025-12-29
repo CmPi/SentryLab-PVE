@@ -5,7 +5,7 @@
 # @author CmPi <cmpi@webe.fr>
 # @brief Global functions for SentryLab-PVE
 # @date 2025-12-28
-# @version 1.0.362.5
+# @version 1.0.362.9
 # @usage source "$(dirname "$0")/utils.sh"
 # @notes * Make it executable: chmod +x /usr/local/bin/sentrylab/*.sh
 #        * Run directly to display current configuration
@@ -41,6 +41,16 @@ log_warn() {
 # ==============================================================================
 # CONFIGURATION LOADING
 # ==============================================================================
+
+# Detect if running interactively (manual execution) vs service/systemd
+# Sets INTERACTIVE=true if:
+#   - stdin is a terminal AND
+#   - not running under systemd (no INVOCATION_ID)
+if [ -t 0 ] && [ -z "${INVOCATION_ID:-}" ]; then
+    INTERACTIVE=true
+else
+    INTERACTIVE=false
+fi
 
 # Load configuration file with validation
 load_config() {
@@ -367,7 +377,7 @@ BOX_WIDTH=80
 
 # Major Title (Double border, centered)
 box_title() {
-    [[ "${DEBUG:-false}" != "true" ]] && return 0
+    [[ "${DEBUG:-false}" != "true" && "${INTERACTIVE:-false}" != "true" ]] && return 0
     local title="$1"
     local width="${2:-80}"
     local inner=$((width - 2))
@@ -398,7 +408,7 @@ strip_ansi() {
 # Begin a box section with a title (Visible only in DEBUG mode)
 # Usage: box_begin "Title" [width]
 box_begin() {
-    [[ "${DEBUG:-false}" != "true" ]] && return 0
+    [[ "${DEBUG:-false}" != "true" && "${INTERACTIVE:-false}" != "true" ]] && return 0
     local raw_title="${1:-}"
     local width="${2:-$BOX_WIDTH}"
     # Calculate length based on stripped text to ignore ANSI codes
@@ -585,7 +595,7 @@ pad_to_width() {
 # The value may wrap across multiple lines; wrapped lines start aligned at the value column
 # Usage: box_value "Label" "Some potentially long value" [width]
 box_value() {
-    [[ "${DEBUG:-false}" != "true" ]] && return 0
+    [[ "${DEBUG:-false}" != "true" && "${INTERACTIVE:-false}" != "true" ]] && return 0
 
     local label="${1-}"
     local value="${2-}"
@@ -654,7 +664,7 @@ box_value() {
 # Color names: RED, GREEN, YELLOW, BLUE, MAGENTA, CYAN, WHITE
 # If no color specified, auto-detects based on keywords (ERROR, INFO, SKIP, etc.)
 box_line() {
-    [[ "${DEBUG:-false}" != "true" ]] && return 0
+    [[ "${DEBUG:-false}" != "true" && "${INTERACTIVE:-false}" != "true" ]] && return 0
     local input="${1-}"
     local width="${2-$BOX_WIDTH}"
     local color_override="${3-}"
@@ -716,7 +726,7 @@ box_line() {
 # End a box section
 # Usage: box_end [wiydth]
 box_end() {
-    [[ "${DEBUG:-false}" != "true" ]] && return 0
+    [[ "${DEBUG:-false}" != "true" && "${INTERACTIVE:-false}" != "true" ]] && return 0
     local width="${1:-$BOX_WIDTH}"
     local dash_count=$((width - 2))
     [[ $dash_count -lt 0 ]] && dash_count=0

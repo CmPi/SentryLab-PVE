@@ -5,7 +5,7 @@
 # @author CmPi <cmpi@webe.fr>
 # @brief Activate SentryLab systemd services and timers
 # @date 2025-12-29
-# @version 1.0.362
+# @version 1.0.362.8
 # @usage sudo /usr/local/bin/sentrylab/start.sh
 #
 
@@ -29,6 +29,10 @@ fi
 
 # Force DEBUG mode for interactive admin tasks
 DEBUG=true
+
+# VERBOSE mode: show detailed systemctl output (symlink creation/removal)
+# Set to false to only show summary messages
+VERBOSE=${VERBOSE:-true}
 
 SYSTEMD_STAGING="$SCRIPT_DIR/systemd"
 SYSTEMD_LIVE="/etc/systemd/system"
@@ -106,22 +110,46 @@ box_line "Reloading systemd daemon..."
 systemctl daemon-reload
 box_line "INFO: Daemon reloaded" "GREEN"
 
-# Enable and start services
+// Enable and start services, capturing output from systemctl enable
 for service in "$SYSTEMD_LIVE"/sentrylab*.service; do
     if [ -f "$service" ]; then
         service_name=$(basename "$service")
-        systemctl enable "$service_name"
-        systemctl start "$service_name"
+        enable_out=$(systemctl enable "$service_name" 2>&1 || true)
+        if [[ "$VERBOSE" == "true" && -n "$enable_out" ]]; then
+            while IFS= read -r line; do
+                [[ -n "$line" ]] && box_line "$line"
+            done <<< "$enable_out"
+        elif [[ -z "$enable_out" ]]; then
+            box_line "INFO: $service_name already enabled" "LIGHTGRAY"
+        fi
+        start_out=$(systemctl start "$service_name" 2>&1 || true)
+        if [[ "$VERBOSE" == "true" && -n "$start_out" ]]; then
+            while IFS= read -r line; do
+                [[ -n "$line" ]] && box_line "$line"
+            done <<< "$start_out"
+        fi
         box_value "Service" "$service_name enabled and started" "GREEN"
     fi
 done
 
-# Enable timers
+// Enable timers, capturing output from systemctl enable
 for timer in "$SYSTEMD_LIVE"/sentrylab*.timer; do
     if [ -f "$timer" ]; then
         timer_name=$(basename "$timer")
-        systemctl enable "$timer_name"
-        systemctl start "$timer_name"
+        enable_out=$(systemctl enable "$timer_name" 2>&1 || true)
+        if [[ "$VERBOSE" == "true" && -n "$enable_out" ]]; then
+            while IFS= read -r line; do
+                [[ -n "$line" ]] && box_line "$line"
+            done <<< "$enable_out"
+        elif [[ -z "$enable_out" ]]; then
+            box_line "INFO: $timer_name already enabled" "LIGHTGRAY"
+        fi
+        start_out=$(systemctl start "$timer_name" 2>&1 || true)
+        if [[ "$VERBOSE" == "true" && -n "$start_out" ]]; then
+            while IFS= read -r line; do
+                [[ -n "$line" ]] && box_line "$line"
+            done <<< "$start_out"
+        fi
         box_value "Timer" "$timer_name enabled and started" "GREEN"
     fi
 done

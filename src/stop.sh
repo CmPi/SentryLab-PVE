@@ -5,7 +5,7 @@
 # @author CmPi <cmpi@webe.fr>
 # @brief Deactivate SentryLab systemd services and timers
 # @date 2025-12-29
-# @version 1.0.362.7
+# @version 1.0.362.8
 # @usage sudo /usr/local/bin/sentrylab/stop.sh
 #
 
@@ -34,6 +34,10 @@ fi
 # Force DEBUG mode for interactive admin tasks
 DEBUG=true
 
+# VERBOSE mode: show detailed systemctl output (symlink removal)
+# Set to false to only show summary messages
+VERBOSE=${VERBOSE:-true}
+
 # Replace basic trap with pretty box output now that utils are available
 trap 'ec=$?; box_line "ERROR: stop.sh failed at line ${LINENO} running: ${BASH_COMMAND} (exit ${ec})" RED; exit ${ec}' ERR
 
@@ -57,28 +61,48 @@ timers=(
   "sentrylab-passive.timer"
 )
 
-# Stop/disable services regardless of file presence
+# Stop/disable services regardless of file presence and capture output
 for unit in "${services[@]}"; do
-    systemctl stop "$unit" >/dev/null 2>&1 || true
-    systemctl disable "$unit" >/dev/null 2>&1 || true
+    stop_out=$(systemctl stop "$unit" 2>&1 || true)
+    if [[ "$VERBOSE" == "true" && -n "$stop_out" ]]; then
+        while IFS= read -r line; do
+            [[ -n "$line" ]] && box_line "$line"
+        done <<< "$stop_out"
+    fi
+    disable_out=$(systemctl disable "$unit" 2>&1 || true)
+    if [[ "$VERBOSE" == "true" && -n "$disable_out" ]]; then
+        while IFS= read -r line; do
+            [[ -n "$line" ]] && box_line "$line"
+        done <<< "$disable_out"
+    fi
     if systemctl is-enabled "$unit" >/dev/null 2>&1; then
         box_value "Service" "$unit still enabled (check dependencies)" "YELLOW"
     else
         box_value "Service" "$unit stopped and disabled"
     fi
-    ((disabled_count++))
+    disabled_count=$((disabled_count + 1))
 done
 
-# Stop/disable timers regardless of file presence
+# Stop/disable timers regardless of file presence and capture output
 for unit in "${timers[@]}"; do
-    systemctl stop "$unit" >/dev/null 2>&1 || true
-    systemctl disable "$unit" >/dev/null 2>&1 || true
+    stop_out=$(systemctl stop "$unit" 2>&1 || true)
+    if [[ "$VERBOSE" == "true" && -n "$stop_out" ]]; then
+        while IFS= read -r line; do
+            [[ -n "$line" ]] && box_line "$line"
+        done <<< "$stop_out"
+    fi
+    disable_out=$(systemctl disable "$unit" 2>&1 || true)
+    if [[ "$VERBOSE" == "true" && -n "$disable_out" ]]; then
+        while IFS= read -r line; do
+            [[ -n "$line" ]] && box_line "$line"
+        done <<< "$disable_out"
+    fi
     if systemctl is-enabled "$unit" >/dev/null 2>&1; then
         box_value "Timer" "$unit still enabled (check dependencies)" "YELLOW"
     else
         box_value "Timer" "$unit stopped and disabled"
     fi
-    ((disabled_count++))
+    disabled_count=$((disabled_count + 1))
 done
 
 if [ $disabled_count -eq 0 ]; then
