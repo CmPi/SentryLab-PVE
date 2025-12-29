@@ -234,13 +234,12 @@ mqtt_publish_no_retain() {
                          --will-payload "offline" \
                          --will-retain \
                          -q "${MQTT_QOS:-1}" 2>"$mqtt_err"; then
-            box_line "Published successfully (no-retain)" "GREEN"
-            log_debug "Published (No-Retain) to $topic"
+            box_line "INFO: Published successfully (no-retain)" 
             rm -f "$mqtt_err"
             return 0
         else
             local err_code=$?
-            box_line "ERROR: Failed to publish (no-retain) - exit code: $err_code" "RED"
+            box_line "ERROR: Failed to publish (no-retain) - exit code: $err_code"
             if [[ -s "$mqtt_err" ]]; then
                 box_line "mosquitto_pub error output:" "YELLOW"
                 while IFS= read -r line; do
