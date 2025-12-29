@@ -196,13 +196,13 @@ fi
 box_begin "NVMe Sensors"
 
 if [[ "$PUSH_NVME_WEAR" != "true" ]]; then
-    box_line "Wear" "disabled (PUSH_NVME_WEAR!=true)"
+    box_value "Wear" "disabled (PUSH_NVME_WEAR!=true)"
 fi
 if [[ "$PUSH_NVME_HEALTH" != "true" ]]; then
-    box_line "Health" "disabled (PUSH_NVME_HEALTH!=true)"
+    box_value "Health" "disabled (PUSH_NVME_HEALTH!=true)"
 fi
 if [[ "$PUSH_NVME_TEMP" != "true" ]]; then
-    box_line "Temperature" "disabled (PUSH_NVME_TEMP!=true)"
+    box_value "Temperature" "disabled (PUSH_NVME_TEMP!=true)"
 fi
 
 for hw_path in /sys/class/hwmon/hwmon*; do
@@ -220,7 +220,7 @@ for hw_path in /sys/class/hwmon/hwmon*; do
     [[ -n "$SN" ]] || { log_debug "Could not retrieve serial number for $nvme_dev"; continue; }
     SN_LOWER=$(echo "$SN" | tr '[:upper:]' '[:lower:]')
     MODEL=$(cat "/sys/class/nvme/$nvme_dev/model" 2>/dev/null | tr -d ' ' || echo "NVMe")
-    box_line "$NVME_SLOT_ID: S/N $SN P/N $MODEL"
+    box_value "$NVME_SLOT_ID" "S/N $SN - P/N $MODEL"
 
     # --- Wear sensor ---
     if [[ "$PUSH_NVME_WEAR" == "true" ]]; then
@@ -601,10 +601,15 @@ if [[ "$PUSH_NON_ZFS" == "true" ]]; then
 
 fi
 
+box_begin "Availability Confirmation"
+
 # On confirme la disponibilité du NAS
 mqtt_publish_retain "$AVAIL_TOPIC" "online"
 
-log_debug "--- DISCOVERY COMPLETE ---"
+box_end
+
+
+
 
 # --- 5. CSV Export Section ---
 
