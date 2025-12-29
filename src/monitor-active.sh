@@ -48,7 +48,7 @@ fi
 
 # --- Non-ZFS Disk Monitoring ---
 if [[ "${PUSH_NON_ZFS:-false}" == "true" ]]; then
-    log_debug "Running non-ZFS disk collection..."
+    box_line "Running non-ZFS disk collection..."
     if [[ -f "$SCRIPT_DIR/non-zfs.sh" ]]; then
         if MONITOR_MODE=active "$SCRIPT_DIR/non-zfs.sh"; then
             log_debug "✓ Non-ZFS disk metrics collected"
@@ -57,10 +57,10 @@ if [[ "${PUSH_NON_ZFS:-false}" == "true" ]]; then
             log_error "✗ Non-ZFS disk collection failed"
         fi
     else
-        log_warn "non-zfs.sh not found, skipping"
+        box_line "SKIP: non-zfs.sh not found, skipping"
     fi
 else
-    log_debug "Non-ZFS disk monitoring disabled (PUSH_NON_ZFS=false)"
+    box_line "SKIP: Non-ZFS disk monitoring disabled (PUSH_NON_ZFS=false)"
 fi
 
 # --- NVMe Wear Monitoring ---

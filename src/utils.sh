@@ -207,12 +207,12 @@ mqtt_publish_no_retain() {
     local payload="$2"
 
     if [[ -z "$topic" ]]; then
-        log_error "MQTT topic is empty"
+        box_line "ERROR: MQTT topic is empty"
         return 1
     fi
 
     if [[ -z "$payload" ]]; then
-        log_warn "MQTT payload is empty for topic: $topic"
+        box_line "WARNING: MQTT payload is empty for topic: $topic"
         return 1
     fi
 

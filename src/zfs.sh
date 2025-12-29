@@ -52,7 +52,7 @@ if [[ "${PUSH_ZFS:-false}" == "true" ]]; then
     while IFS= read -r pool; do
         [[ -z "$pool" ]] && continue
         
-        log_debug "Processing pool: $pool"
+        box_line "Processing pool: $pool"
         
         # --- Health Status ---
         HEALTH=$(zpool list -H -o health "$pool" 2>/dev/null || echo "UNKNOWN")
@@ -114,18 +114,15 @@ if [[ "${PUSH_ZFS:-false}" == "true" ]]; then
                 ($pool + "_usage_percent"): ($usage | tonumber),
                 ($pool + "_fragmentation_percent"): ($frag | tonumber)
             }' <<<"$JSON")
-        
-        log_debug "  Pool: $pool"
-        log_debug "    Health: $HEALTH (status: $HEALTH_VAL)"
-        log_debug "    Usage: $USAGE% ($ALLOC / $SIZE bytes)"
-        log_debug "    Fragmentation: $FRAG%"
+        box_line "Pool: $pool" "MAGENTA"
+        box_value "Health" "$HEALTH (status: $HEALTH_VAL)"
+        box_value "Usage" "Usage: $USAGE% ($ALLOC / $SIZE bytes)"
+        box_value "Fragmentation" "$FRAG%"
         
     done <<< "$POOLS"
 
     # --- Publish JSON to MQTT (Retain pour la persistance de l'état de santé) ---
     mqtt_publish_retain "$ZFS_TOPIC" "$JSON"
-
-    log_debug "--- NAS ZFS SCAN COMPLETE ---"
 
     # --- Test mode when run directly ---
     if [[ "${BASH_SOURCE[0]}" == "${0}" ]]; then
@@ -137,3 +134,5 @@ else
 fi
 
 box_end
+
+exit 0

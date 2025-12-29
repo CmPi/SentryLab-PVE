@@ -45,7 +45,7 @@ if [[ "${PUSH_NVME_TEMP:-false}" == "true" ]]; then
         nvme_link=$(readlink -f "$hw_path")
         nvme_dev=$(echo "$nvme_link" | grep -oP 'nvme\d+' | head -n1)
         if [[ -z "$nvme_dev" ]]; then
-            log_debug "Could not determine nvme device for $hw_num"
+            box_line "ERROR: Could not determine nvme device for $hw_num"
             continue
         fi
         SN=$(cat "/sys/class/nvme/$nvme_dev/serial" 2>/dev/null | tr -d ' ')

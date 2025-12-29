@@ -67,25 +67,25 @@ fi
 
 # --- Non-ZFS Disk Monitoring (passive: skip sleeping devices) ---
 if [[ "${PUSH_NON_ZFS:-false}" == "true" ]]; then
-    log_debug "Running non-ZFS disk collection (passive)..."
+    box_line "Running non-ZFS disk collection (passive)..."
     if [[ -f "$SCRIPT_DIR/non-zfs.sh" ]]; then
         if MONITOR_MODE=passive "$SCRIPT_DIR/non-zfs.sh"; then
             log_debug "✓ Non-ZFS disk metrics collected (passive)"
             MONITORING_ENABLED=true
         else
-            log_error "✗ Non-ZFS disk collection failed (passive)"
+            box_line "✗ Non-ZFS disk collection failed (passive)"
         fi
     else
-        log_warn "non-zfs.sh not found, skipping"
+        box_line "SKIP: non-zfs.sh not found, skipping"
     fi
 else
-    log_debug "Non-ZFS disk monitoring disabled (PUSH_NON_ZFS=false)"
+    box_line "SKIP: Non-ZFS disk monitoring disabled (PUSH_NON_ZFS=false)"
 fi
 
 # --- Warning if nothing is enabled ---
 if [[ "$MONITORING_ENABLED" == "false" ]]; then
-    log_warn "No passive monitoring enabled in sentrylab.conf"
-    log_warn "Enable at least one of: PUSH_SYSTEM, PUSH_NVME_TEMP, PUSH_ZFS, PUSH_NON_ZFS"
+    box_line "WARNING: No passive monitoring enabled in sentrylab.conf"
+    box_line "WARNING: Enable at least one of: PUSH_SYSTEM, PUSH_NVME_TEMP, PUSH_ZFS, PUSH_NON_ZFS"
 fi
 
 box_end
