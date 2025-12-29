@@ -452,10 +452,9 @@ if [[ "$PUSH_ZFS" == "true" ]]; then
 
     box_begin "Pools ZFS ${POOLS}"
 
-
     POOLS=$(zpool list -H -o name 2>/dev/null || true)
     if [[ -z "$POOLS" ]]; then
-        log_debug "No ZFS pools found"
+        box_line "WARNING: No ZFS pools found"
     else
 
         for pool in $POOLS; do
