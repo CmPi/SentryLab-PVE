@@ -417,6 +417,15 @@ str_width() {
     echo "$w"
 }
 
+
+
+
+
+
+
+
+
+
 wrap_text() {
     local text="$1"
     local max="$2"
@@ -478,7 +487,10 @@ wrap_text() {
                     if [[ -n "$chunk" ]]; then
                         out+="$chunk"
                         # Ajouter newline seulement s'il reste du texte
-                        [[ ${#remaining} -gt $i ]] && out+=
+                        [[ ${#remaining} -gt $i ]] && out+=$'\n'
+                    fi
+                    remaining="${remaining:i}"
+                done
                 continue
             fi
             
@@ -513,6 +525,22 @@ wrap_text() {
     
     printf '%s' "$out"
 }
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 box_line() {
     [[ "${DEBUG:-false}" != "true" ]] && return 0
@@ -589,6 +617,17 @@ box_line() {
 
     done <<< "$input"
 }
+
+
+
+
+
+
+
+
+
+
+
 
 # End a box section
 # Usage: box_end [width]
