@@ -62,14 +62,10 @@ if [ "$has_backup" = true ]; then
     echo
     
     # Ask user which version to install
-    box_line "Which version would you like to install?"
-    echo
-    echo "  1) Default (from staging directory)"
-    echo "  2) Customized (from backup directory)"
-    echo
+    box_begin "Which version would you like to install?"
+    box_line "  1) Default (from staging directory)"
+    box_line "  2) Customized (from backup directory)"
     read -p "Enter choice (1 or 2): " choice
-    echo
-    
     case "$choice" in
         2)
             SOURCE_DIR="$BACKUP_DIR"
@@ -80,7 +76,7 @@ if [ "$has_backup" = true ]; then
             box_line "INFO: Using default units" "GREEN"
             ;;
     esac
-    echo
+    box_end
 fi
 
 box_begin "Deploying Systemd Units"

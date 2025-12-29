@@ -63,6 +63,12 @@ timers=(
 
 # Stop/disable services regardless of file presence and capture output
 for unit in "${services[@]}"; do
+    # Check if unit exists
+    if ! systemctl list-unit-files "$unit" 2>&1 | grep -q "$unit"; then
+        box_value "Service" "$unit not found (skipped)" "LIGHTGRAY"
+        continue
+    fi
+    
     stop_out=$(systemctl stop "$unit" 2>&1 || true)
     if [[ "$VERBOSE" == "true" && -n "$stop_out" ]]; then
         while IFS= read -r line; do
@@ -79,12 +85,18 @@ for unit in "${services[@]}"; do
         box_value "Service" "$unit still enabled (check dependencies)" "YELLOW"
     else
         box_value "Service" "$unit stopped and disabled"
+        disabled_count=$((disabled_count + 1))
     fi
-    disabled_count=$((disabled_count + 1))
 done
 
 # Stop/disable timers regardless of file presence and capture output
 for unit in "${timers[@]}"; do
+    # Check if unit exists
+    if ! systemctl list-unit-files "$unit" 2>&1 | grep -q "$unit"; then
+        box_value "Timer" "$unit not found (skipped)" "LIGHTGRAY"
+        continue
+    fi
+    
     stop_out=$(systemctl stop "$unit" 2>&1 || true)
     if [[ "$VERBOSE" == "true" && -n "$stop_out" ]]; then
         while IFS= read -r line; do
@@ -101,8 +113,8 @@ for unit in "${timers[@]}"; do
         box_value "Timer" "$unit still enabled (check dependencies)" "YELLOW"
     else
         box_value "Timer" "$unit stopped and disabled"
+        disabled_count=$((disabled_count + 1))
     fi
-    disabled_count=$((disabled_count + 1))
 done
 
 if [ $disabled_count -eq 0 ]; then
