@@ -450,9 +450,10 @@ box_end
 
 if [[ "$PUSH_ZFS" == "true" ]]; then
 
-    box_begin "Pools ZFS ${POOLS}"
+    box_begin "Pools ZFS discovery"
 
     POOLS=$(zpool list -H -o name 2>/dev/null || true)
+
     if [[ -z "$POOLS" ]]; then
         box_line "WARNING: No ZFS pools found"
     else
@@ -460,7 +461,7 @@ if [[ "$PUSH_ZFS" == "true" ]]; then
         for pool in $POOLS; do
             POOL_NORM=$(echo "$pool" | tr '-' '_' | tr '[:upper:]' '[:lower:]')
 
-            log_debug "Registering ZFS pools: $pool"
+            box_line "Registering ZFS pools: $pool"
 
             # --- Health (sensor) ---
             HA_ID="${HOST_NAME}_zfs_${POOL_NORM}_status"
