@@ -5,11 +5,13 @@
 # @author CmPi <cmpi@webe.fr>
 # @brief Deactivate SentryLab systemd services and timers
 # @date 2025-12-29
-# @version 1.0.362
+# @version 1.0.362.7
 # @usage sudo /usr/local/bin/sentrylab/stop.sh
 #
 
-set -euo pipefail
+set -Euo pipefail
+# Basic early error trap before utils is loaded
+trap 'ec=$?; echo "ERROR: stop.sh failed at line ${LINENO} running: ${BASH_COMMAND} (exit ${ec})" >&2; exit ${ec}' ERR
 # Ensure globs that don't match expand to nothing (not literal patterns)
 shopt -s nullglob
 
@@ -31,6 +33,9 @@ fi
 
 # Force DEBUG mode for interactive admin tasks
 DEBUG=true
+
+# Replace basic trap with pretty box output now that utils are available
+trap 'ec=$?; box_line "ERROR: stop.sh failed at line ${LINENO} running: ${BASH_COMMAND} (exit ${ec})" RED; exit ${ec}' ERR
 
 SYSTEMD_STAGING="$SCRIPT_DIR/systemd"
 SYSTEMD_LIVE="/etc/systemd/system"
