@@ -135,8 +135,9 @@ mqtt_publish_retain() {
     fi
 
     if [[ "${DEBUG:-false}" == "true" ]]; then
-        box_line "Would publish (RETAIN) to $topic"
-        box_line "Payload: ${payload:0:100}"
+        box_line "Would publish (RETAIN)"
+        box_value "topic" "$topic"
+        box_value "Payload" "${payload:0:150}"
         return 0
     fi
 
@@ -335,9 +336,16 @@ box_title() {
 # Supprime les codes ANSI (codes couleur)
 strip_ansi() {
     local s="$1"
-    # Utilise un pattern plus robuste pour les séquences ANSI
-    s="${s//$'\e'\[*([0-9;])m/}"
-    printf '%s' "$s"
+    # Remove ANSI escape sequences (color codes) reliably
+        # Remove ANSI escape sequences (color codes) using pure Bash (no external tools)
+        # Matches CSI sequences starting with ESC '[' followed by digits/semicolons and a final letter
+        local regex=$'\033\[[0-9;]*[ -/]*[@-~]'
+        # Iteratively remove all matches using BASH_REMATCH
+        while [[ $s =~ $regex ]]; do
+            local match="${BASH_REMATCH[0]}"
+            s="${s//$match/}"
+        done
+        printf '%s' "$s"
 }
 
 
@@ -542,80 +550,118 @@ wrap_text() {
 
 
 
-box_line() {
+# Print a label:value pair. The label is kept on the first line and the value is colored.
+# The value may wrap across multiple lines; wrapped lines start aligned at the value column
+# Usage: box_value "Label" "Some potentially long value" [width]
+box_value() {
     [[ "${DEBUG:-false}" != "true" ]] && return 0
 
-    local input="${1-}"
-    local width="${2-$BOX_WIDTH}"
-    [[ ! "$width" =~ ^[0-9]+$ ]] && width=80
-    local max=$((width - 4))
+    local label="${1-}"
+    local value="${2-}"
+    local width="${3-$BOX_WIDTH}"
+    [[ ! "$width" =~ ^[0-9]+$ ]] && width=$BOX_WIDTH
+    local inner=$((width - 4))
 
     # Colors
-    local RED='\033[31m'
-    local GRN='\033[32m'
-    local YEL='\033[33m'
-    local CYA='\033[36m'
-    local CLR='\033[0m'
+    local RED=$'\033[31m'
+    local GRN=$'\033[32m'
+    local YEL=$'\033[33m'
+    local CYA=$'\033[36m'
+    local CLR=$'\033[0m'
 
-    # --- cas input vide ---
+    # prepare label with colon and space
+    local label_txt="${label}: "
+    local label_w=$(str_width "$label_txt")
+    # ensure label fits in a single line; truncate if necessary
+    if (( label_w >= inner )); then
+        # truncate to leave at least 1 char for value column
+        local max_label=$((inner - 2))
+        label_txt="${label_txt:0:$max_label}… "
+        label_w=$(str_width "$label_txt")
+    fi
+
+    # Decide color for the value based on content
+    local color=$CYA
+    if [[ "$value" == ERROR* || "$value" == false ]]; then
+        color=$RED
+    elif [[ "$value" == INFO* || "$value" == true || "$value" == "Directory exists" ]]; then
+        color=$GRN
+    elif [[ "$value" == SKIP* || "$value" == *Disabled* ]]; then
+        color=$YEL
+    fi
+
+    # Wrap the value to the available width
+    local avail=$((inner - label_w))
+    (( avail < 1 )) && avail=1
+    local wrapped_value
+    wrapped_value=$(wrap_text "$value" "$avail")
+
+    # Render first line: label + colored first chunk
+    local first=true
+    while IFS= read -r line || [[ -n "$line" ]]; do
+        if [[ "$first" == true ]]; then
+            # compute padding for the rest of the line
+            local vis=$(str_width "$line")
+            local pad=$((avail - vis))
+            [[ $pad -lt 0 ]] && pad=0
+            printf "│ %s%s%s%*s │\n" "$label_txt" "$color" "$line" "$pad" "" 
+            printf "%b" "$CLR" >/dev/null 2>&1 || true
+            first=false
+        else
+            # subsequent lines: indent to value column
+            local vis=$(str_width "$line")
+            local pad=$((avail - vis))
+            [[ $pad -lt 0 ]] && pad=0
+            # build indent
+            local indent=""
+            # create spaces equal to label width
+            for ((i=0;i<label_w;i++)); do indent+=" "; done
+            printf "│ %s%s%s%*s │\n" "$indent" "$color" "$line" "$pad" ""
+            printf "%b" "$CLR" >/dev/null 2>&1 || true
+        fi
+    done <<< "$wrapped_value"
+}
+
+
+# Print arbitrary text lines inside the box. Uses a single color chosen from keywords.
+# Usage: box_line "Some text potentially multi-line" [width]
+box_line() {
+    [[ "${DEBUG:-false}" != "true" ]] && return 0
+    local input="${1-}"
+    local width="${2-$BOX_WIDTH}"
+    [[ ! "$width" =~ ^[0-9]+$ ]] && width=$BOX_WIDTH
+    local inner=$((width - 4))
+
+    # Colors
+    local RED=$'\033[31m'
+    local GRN=$'\033[32m'
+    local YEL=$'\033[33m'
+    local CYA=$'\033[36m'
+    local CLR=$'\033[0m'
+
+    # choose a single color for the whole input based on keywords
+    local color="$CYA"
+    if [[ "$input" == ERROR* || "$input" == *ERROR* ]]; then
+        color="$RED"
+    elif [[ "$input" == INFO* || "$input" == *INFO* ]]; then
+        color="$GRN"
+    elif [[ "$input" == SKIP* || "$input" == *Disabled* ]]; then
+        color="$YEL"
+    fi
+
     if [[ -z "$input" ]]; then
-        printf "│ %*s │\n" "$max" ""
+        printf "│ %*s │\n" "$inner" ""
         return
     fi
 
-    # --- lire ligne par ligne ---
-    while IFS= read -r raw || [[ -n "$raw" ]]; do
-        # ---- déterminer la couleur et séparer label/value ----
-        local color="" label="" value=""
-        if [[ "$raw" == *": "* ]]; then
-            label="${raw%%: *}: "
-            value="${raw#*: }"
-
-            if [[ "$value" == ERROR* || "$value" == false ]]; then
-                color="$RED"
-            elif [[ "$value" == INFO* || "$value" == true || "$value" == "Directory exists" ]]; then
-                color="$GRN"
-            elif [[ "$value" == SKIP* || "$value" == *Disabled* ]]; then
-                color="$YEL"
-            else
-                color="$CYA"
-            fi
-        else
-            # Pas de séparation label:value
-            if [[ "$raw" == ERROR* ]]; then
-                color="$RED"
-            elif [[ "$raw" == INFO* ]]; then
-                color="$GRN"
-            fi
-        fi
-
-        # Wrapper le texte brut
-        local wrapped=$(wrap_text "$raw" "$max")
-
-        # ---- rendu physique ligne par ligne ----
-        local first_line=true
-        while IFS= read -r phys_line || [[ -n "$phys_line" ]]; do
-            local vis=$(str_width "$phys_line")
-            local pad=$((max - vis))
-            [[ $pad -lt 0 ]] && pad=0
-            
-            # Appliquer la couleur uniquement après le label sur la première ligne
-            if [[ -n "$label" ]] && [[ "$first_line" == true ]]; then
-                # Première ligne avec label:value
-                local label_len=$(str_width "$label")
-                local colored_part="${phys_line:${#label}}"
-                printf "│ %b%b%b%b%*s │\n" "$label" "$color" "$colored_part" "$CLR" "$pad" ""
-                first_line=false
-            elif [[ -n "$color" ]]; then
-                # Ligne sans label ou lignes suivantes
-                printf "│ %b%b%b%*s │\n" "$color" "$phys_line" "$CLR" "$pad" ""
-            else
-                # Pas de couleur
-                printf "│ %b%*s │\n" "$phys_line" "$pad" ""
-            fi
-        done <<< "$wrapped"
-
-    done <<< "$input"
+    local wrapped
+    wrapped=$(wrap_text "$input" "$inner")
+    while IFS= read -r line || [[ -n "$line" ]]; do
+        local vis=$(str_width "$line")
+        local pad=$((inner - vis))
+        [[ $pad -lt 0 ]] && pad=0
+        printf "│ %b%s%b%*s │\n" "$color" "$line" "$CLR" "$pad" ""
+    done <<< "$wrapped"
 }
 
 
@@ -651,49 +697,49 @@ display_config() {
 
     box_begin "MQTT Connection"
     # Ensure $PORT is treated as part of the value for coloring
-    box_line "Broker: ${BROKER}:${PORT}"
-    box_line "User: ${USER:-[none]}"
-    box_line "QoS Level: ${MQTT_QOS:-0}"
+    box_value "Broker" "${BROKER}:${PORT}"
+    box_value "User" "${USER:-[none]}"
+    box_value "QoS Level" "${MQTT_QOS:-0}"
     # Fixed the missing $ before {DEBUG}
-    box_line "Debug Mode: ${DEBUG:-false}"
+    box_value "Debug Mode" "${DEBUG:-false}"
     box_end
     echo
 
     box_begin "Host Information"
-    box_line "Hostname: $HOST_NAME"
-    box_line "Base Topic: $BASE_TOPIC"
-    box_line "HA Discovery: $HA_DISCOVERY_PREFIX"
+    box_value "Hostname" "$HOST_NAME"
+    box_value "Base Topic" "$BASE_TOPIC"
+    box_value "HA Discovery" "$HA_DISCOVERY_PREFIX"
     box_end
     echo
 
     box_begin "CSV Export"
-    box_line "Directory: ${OUTPUT_CSV_DIR:-[not configured]}"
-    box_line "Retention: ${CSV_RETENTION_DAYS:-30} days"
-    # Logic remains the same, box_line will handle the coloring of 'Status'
+    box_value "Directory" "${OUTPUT_CSV_DIR:-[not configured]}"
+    box_value "Retention" "${CSV_RETENTION_DAYS:-30} days"
+    # Logic remains the same, box_value will handle the coloring of 'Status'
     if [[ -n "${OUTPUT_CSV_DIR:-}" && -d "$OUTPUT_CSV_DIR" ]]; then
-        box_line "Status: Directory exists"
+        box_value "Status" "Directory exists"
     else
-        box_line "Status: ERROR: Disabled or directory missing"
+        box_value "Status" "ERROR: Disabled or directory missing"
     fi
     box_end
     echo
 
     box_begin "Monitoring Features"
-    box_line "System Monitoring: ${PUSH_SYSTEM:-false}"
-    box_line "NVMe Temperature: ${PUSH_NVME_TEMP:-false}"
-    box_line "NVMe Wear: ${PUSH_NVME_WEAR:-false}"
-    box_line "NVMe Health: ${PUSH_NVME_HEALTH:-false}"
-    box_line "ZFS Datasets: ${PUSH_ZFS:-false}"
-    box_line "Non-ZFS Disks: ${PUSH_NON_ZFS:-false}"
+    box_value "System Monitoring" "${PUSH_SYSTEM:-false}"
+    box_value "NVMe Temperature" "${PUSH_NVME_TEMP:-false}"
+    box_value "NVMe Wear" "${PUSH_NVME_WEAR:-false}"
+    box_value "NVMe Health" "${PUSH_NVME_HEALTH:-false}"
+    box_value "ZFS Datasets" "${PUSH_ZFS:-false}"
+    box_value "Non-ZFS Disks" "${PUSH_NON_ZFS:-false}"
     box_end
     echo
 
     box_begin "Dependencies"
-    box_line "$(check_dependencies false)"
+    box_value "Dependencies" "$(check_dependencies false)"
     box_end
 
     box_begin "Configuration File"
-    box_line "Path: $CONFIG_PATH"
+    box_value "Path" "$CONFIG_PATH"
     box_end
 }
 

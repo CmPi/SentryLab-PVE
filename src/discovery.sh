@@ -87,14 +87,17 @@ if [[ "$PUSH_SYSTEM" == "true" ]]; then
     HA_ID="${HOST_NAME}_cpu_temp"
     HA_LABEL="Température du CPU"
     CFG_TOPIC="homeassistant/sensor/${HA_ID}/config"
-    PAYLOAD=$(jq -n -c \
+    PAYLOAD=$(jq -n 
         --arg name "$HA_LABEL" \
         --arg unique_id "$HA_ID" \
         --arg stat_t "$SYSTEM_TOPIC" \
         --arg val_tpl '{{ value_json.cpu }}' \
         --arg availability "$AVAIL_TOPIC" \
         --argjson dev "$DEVICE_JSON" \
-        '{ name: $name, unique_id: $unique_id, object_id: $unique_id,
+        '{ 
+            name: $name, 
+            unique_id: $unique_id, 
+            object_id: $unique_id,
             state_topic: $stat_t,
             value_template: $val_tpl,
             unit_of_measurement: "°C", icon: "mdi:thermometer",
@@ -115,7 +118,7 @@ if [[ "$PUSH_SYSTEM" == "true" ]]; then
     HA_ID="${HOST_NAME}_chassis_temp"
     HA_LABEL="Température du chassis"
     CFG_TOPIC="homeassistant/sensor/${HA_ID}/config"
-    PAYLOAD=$(jq -n -c \
+    PAYLOAD=$(jq -n \
         --arg name "$HA_LABEL" \
         --arg unique_id "$HA_ID" \
         --arg stat_t "$SYSTEM_TOPIC" \
@@ -591,8 +594,8 @@ if [[ "$PUSH_NON_ZFS" == "true" ]]; then
         # 2. Construction de la donnée CSV
         CSV_DISKS_DATA+=$'\n'"\"${target}\",${fstype},${HA_FREE_ID},${HA_SIZE_ID}"
 
-        # Debug visuel dans tes boîtes
-        box_line "Registered:" "$target" 80
+        # Debug visuel dans tes boîtes (label/value)
+        box_value "Registered" "$target" 80
 
     done < <(df -x tmpfs -x devtmpfs -x zfs --output=target,fstype | tail -n +2)
 
