@@ -537,7 +537,9 @@ get_color_code() {
         MAGENTA) echo $'\033[35m' ;;
         CYAN)   echo $'\033[36m' ;;
         WHITE)  echo $'\033[37m' ;;
-        *)      echo $'\033[36m' ;;  # Default to CYAN
+        LIGHTGRAY|LIGHT_GREY|GRAY|GREY|LIGHT_GRAY|LIGHT_GREY) echo $'\033[90m' ;;
+        NONE|OFF|NO|DISABLE) echo '' ;;
+        *)      echo '' ;;  # Default: no color
     esac
 }
 
@@ -608,7 +610,7 @@ box_value() {
             # pad line to available width (UTF-8 aware), then apply color/reset
             local padded_line
             padded_line=$(pad_to_width "$line" "$avail")
-            printf "│ %s%b%s%b │\n" "$label_txt" "$color" "$padded_line" "$CLR"
+            printf "│ %s%b%s%b│\n" "$label_txt" "$color" "$padded_line" "$CLR"
             first=false
         else
             # subsequent lines: indent to value column, pad (UTF-8 aware), then color/reset
@@ -617,7 +619,7 @@ box_value() {
             for ((i=0;i<label_w;i++)); do indent+=" "; done
             local padded_line
             padded_line=$(pad_to_width "$line" "$avail")
-            printf "│ %s%b%s%b │\n" "$indent" "$color" "$padded_line" "$CLR"
+            printf "│ %s%b%s%b│\n" "$indent" "$color" "$padded_line" "$CLR"
         fi
     done <<< "$wrapped_value"
 }
@@ -639,13 +641,12 @@ box_line() {
     local RED=$'\033[31m'
     local GRN=$'\033[32m'
     local YEL=$'\033[33m'
-    local CYA=$'\033[36m'
     local CLR=$'\033[0m'
 
     # choose a single color for the whole input
-    local color="$CYA"
-    
-    # If explicit color provided, use it
+    local color=""
+
+    # If explicit color provided, use it (supports NONE for no color)
     if [[ -n "$color_override" ]]; then
         color=$(get_color_code "$color_override")
     else
@@ -656,11 +657,13 @@ box_line() {
             color="$GRN"
         elif [[ "$input" == SKIP* || "$input" == *Disabled* ]]; then
             color="$YEL"
+        else
+            color=$(get_color_code "LIGHTGRAY")  # default: light gray
         fi
     fi
 
     if [[ -z "$input" ]]; then
-        printf "│ %*s │\n" "$inner" ""
+        printf "│ %*s│\n" "$inner" ""
         return
     fi
 
@@ -669,7 +672,11 @@ box_line() {
     while IFS= read -r line || [[ -n "$line" ]]; do
         local padded_line
         padded_line=$(pad_to_width "$line" "$inner")
-        printf "│ %b%s%b │\n" "$color" "$padded_line" "$CLR"
+        if [[ -n "$color" ]]; then
+            printf "│ %b%s%b│\n" "$color" "$padded_line" "$CLR"
+        else
+            printf "│ %s│\n" "$padded_line"
+        fi
     done <<< "$wrapped"
 }
 
@@ -690,7 +697,7 @@ box_end() {
 # Display loaded configuration when run directly
 display_config() {
     clear
-
+    local color=""
     box_title "SentryLab-PVE Configuration" 
 
     box_begin "MQTT Connection"
@@ -717,7 +724,7 @@ display_config() {
         box_value "Status" "ERROR: Disabled or directory missing"
     fi
     box_end
-    echo
+        padded_line=$(pad_to_width "$line" "$inner")
 
     box_begin "Monitoring Features"
     box_value "System Monitoring" "${PUSH_SYSTEM:-false}"

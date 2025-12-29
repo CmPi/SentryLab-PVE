@@ -31,21 +31,6 @@ JSON=$(jq -n '{}')
 
 log_debug "--- NAS TEMP SCAN STARTING ---"
 
-# --- 1. CPU Temperature ---
-CPU_TEMP=$(sensors -j | jq -r '."coretemp-isa-0000"?["Package id 0"]?["temp1_input"] // empty')
-if [[ -n "$CPU_TEMP" ]]; then
-    JSON=$(jq --argjson v "$CPU_TEMP" '. + {cpu: $v}' <<<"$JSON")
-    log_debug "CPU Temp: $CPU_TEMP°C"
-fi
-
-# --- 2. NAS Ambient Temperature ---
-ACPI_HWMON=$(grep -l "acpitz" /sys/class/hwmon/hwmon*/name 2>/dev/null | head -n1 | cut -d/ -f5)
-if [[ -n "$ACPI_HWMON" ]]; then
-    RAW_AMB=$(cat "/sys/class/hwmon/$ACPI_HWMON/temp1_input")
-    NAS_AMB=$(awk "BEGIN{printf \"%.1f\", $RAW_AMB/1000}")
-    JSON=$(jq --argjson v "$NAS_AMB" '. + {chassis: $v}' <<<"$JSON")
-    log_debug "chassis: $NAS_AMB°C"
-fi
 
 # --- 3. NVMe Temperatures ---
 for hw_path in /sys/class/hwmon/hwmon*; do
