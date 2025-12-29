@@ -135,7 +135,8 @@ mqtt_publish_retain() {
     fi
 
     if [[ "${DEBUG:-false}" == "true" ]]; then
-        log_debug "Would publish (RETAIN) to $topic -> ${payload:0:100}..."
+        box_line "Would publish (RETAIN) to $topic"
+        box_line "Payload: ${payload:0:100}"
         return 0
     fi
 

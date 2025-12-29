@@ -35,20 +35,20 @@ box_begin "MQTT Broker Availability"
 MAX_RETRIES=40
 RETRY_COUNT=0
 
-log_debug "Checking MQTT Broker availability ($BROKER:$PORT)..."
+box_line "Checking MQTT Broker availability ($BROKER:$PORT)..."
 
 # nc (netcat) vérifie si le port est ouvert sans envoyer de données
 while ! nc -z "$BROKER" "$PORT"; do
     RETRY_COUNT=$((RETRY_COUNT + 1))
     if [ $RETRY_COUNT -ge $MAX_RETRIES ]; then
-        log_error "Broker unreachable after $MAX_RETRIES attempts. Exiting."
+        box_line "ERROR: Broker unreachable after $MAX_RETRIES attempts. Exiting."
         box_end
         exit 1
     fi
-    log_debug "Broker not ready... retrying in 10s ($RETRY_COUNT/$MAX_RETRIES)"
+    box_line "SKIP: Broker not ready... retrying in 10s ($RETRY_COUNT/$MAX_RETRIES)"
     sleep 15
 done
-log_debug "Broker is UP! Proceeding with discovery."
+box_line "INFO: Broker is UP! Proceeding with discovery."
 box_end
 
 # --- Enable nullglob for NVMe temperature sensors et pools enumaration ---
@@ -57,8 +57,6 @@ shopt -s nullglob
 # --- Device JSON pour Home Assistant ---
 DEVICE_JSON=$(jq -n --arg hn "$HOST_NAME" '{"identifiers": [$hn], "name": $hn, "model": "Node", "manufacturer": "Proxmox"}')
 BASE_CONFIG=$(jq -n --argjson dev "$DEVICE_JSON" --arg av_t "$AVAIL_TOPIC" '{availability_topic: $av_t, dev: $dev}')
-
-log_debug "--- STARTING DISCOVERY ---"
 
 # --- Initialisation du JSON pour la publication MQTT ---
 JSON=$(jq -n '{}')
@@ -202,6 +200,16 @@ fi
 
 box_begin "NVMe Sensors"
 
+if [[ "$PUSH_NVME_WEAR" != "true" ]]; then
+    box_line "Wear disabled (PUSH_NVME_WEAR!=true)"
+fi
+if [[ "$PUSH_NVME_HEALTH" != "true" ]]; then
+    box_line "Health disabled (PUSH_NVME_HEALTH!=true)"
+fi
+if [[ "$PUSH_NVME_TEMP" != "true" ]]; then
+    box_line "Temp disabled (PUSH_NVME_TEMP!=true)"
+fi
+
 for hw_path in /sys/class/hwmon/hwmon*; do
     hw_name=$(cat "$hw_path/name" 2>/dev/null || echo "")
     [[ "$hw_name" == "nvme" ]] || continue
@@ -217,8 +225,7 @@ for hw_path in /sys/class/hwmon/hwmon*; do
     [[ -n "$SN" ]] || { log_debug "Could not retrieve serial number for $nvme_dev"; continue; }
     SN_LOWER=$(echo "$SN" | tr '[:upper:]' '[:lower:]')
     MODEL=$(cat "/sys/class/nvme/$nvme_dev/model" 2>/dev/null | tr -d ' ' || echo "NVMe")
-    log_debug "Processing NVMe: $MODEL ($SN)"
-
+    box_line "Slot $NVME_SLOT_ID: S/N $SN P/N $MODEL"
 
     # --- Wear sensor ---
     if [[ "$PUSH_NVME_WEAR" == "true" ]]; then
@@ -247,7 +254,6 @@ for hw_path in /sys/class/hwmon/hwmon*; do
         mqtt_publish_retain "$CFG_TOPIC" "$PAYLOAD"
         CSV_LINES+="${HOST_NAME}_${HA_ID},Wear,\"${HA_LABEL}\",${SN},${NVME_SLOT_ID}"$'\n'
     else
-        box_line "NVMe wear not pushed (PUSH_NVME_WEAR=false)"
     fi
 
     if [[ "$PUSH_NVME_HEALTH" == "true" ]]; then
@@ -279,7 +285,6 @@ for hw_path in /sys/class/hwmon/hwmon*; do
         mqtt_publish_retain "$CFG_TOPIC" "$PAYLOAD"
         CSV_LINES+="${HOST_NAME}_${HA_ID},Health,\"${HA_LABEL}\",${SN},${NVME_SLOT_ID}"$'\n'
     else
-        box_line "NVMe health not pushed (PUSH_NVME_HEALTH=false)"
     fi
 
     if [[ "$PUSH_NVME_TEMP" == "true" ]]; then
@@ -327,7 +332,6 @@ for hw_path in /sys/class/hwmon/hwmon*; do
             log_debug "  Registered NVMe temperature sensor: $label"
         done
     else
-        box_line "NVMe temperatures not pushed (PUSH_NVME_TEMP=false)"
     fi
 
 done
@@ -338,7 +342,8 @@ box_end
 
 if [[ "$PUSH_ZFS" == "true" ]]; then
 
-    box_begin "-- Pools ZFS ${POOLS}"
+    box_begin "Pools ZFS ${POOLS}"
+
 
     POOLS=$(zpool list -H -o name 2>/dev/null || true)
     if [[ -z "$POOLS" ]]; then
