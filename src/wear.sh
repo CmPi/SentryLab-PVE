@@ -3,13 +3,13 @@
 #
 # @file /usr/local/bin/sentrylab/wear.sh
 # @author CmPi <cmpi@webe.fr>
-# @brief Relève le niveau d'usure des NVMe et les publie via MQTT
+# @brief Collects NVMe wear levels and publishes to MQTT
 # @date 2025-12-29
-# @version 1.0.361
-# @usage À exécuter périodiquement (ex: toutes les heures via cron ou timer systemd)
+# @version 1.0.362.4
+# @usage Run periodically (e.g., every hour via cron or systemd timer)
 # @notes make it executable as usual
-#        chmod +x /usr/local/bin/*.sh
-#        ATTENTION: Ce script utilise smartctl qui RÉVEILLE les disques en veille
+#        chmod +x /usr/local/bin/sentrylab/wear.sh
+#        WARNING: This script uses smartctl which WAKES sleeping drives
 #
 
 set -euo pipefail
@@ -74,8 +74,8 @@ if [[ "$PUSH_NVME_WEAR" == "true" ]]; then
         log_debug "Reading wear level for $nvme_dev (S/N: $SN)"
         
         # Lire le niveau d'usure avec smartctl
-        # ATTENTION: Cette commande RÉVEILLE le disque s'il est en veille
-        WEAR=$(smartctl -A "$DEV" 2>/dev/null | grep -i "Percentage Used:" | awk -F: '{print $2}' | xargs | tr -d '%')
+        # WARNING: This command WAKES the drive if sleeping
+        WEAR=$(smartctl -A "$DEV" 2>/dev/null | grep -i "Percentage Used:" | cut -d: -f2 | xargs | tr -d '%')
         
         if [[ -z "$WEAR" ]]; then
             log_debug "  Could not read wear level for $nvme_dev, skipping"
@@ -98,7 +98,7 @@ if [[ "$PUSH_NVME_WEAR" == "true" ]]; then
 
     log_debug "--- NAS WEAR SCAN COMPLETE ---"
 
-    # --- Test mode si lancé directement ---
+    # --- Test mode when run directly ---
     if [[ "${BASH_SOURCE[0]}" == "${0}" ]]; then
         [[ "$DEBUG" == "true" ]] && echo "--- NAS WEAR TEST ---"
         [[ "$DEBUG" == "true" ]] && echo "$JSON" | jq .

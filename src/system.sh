@@ -3,10 +3,10 @@
 #
 # @file /usr/local/bin/sentrylab/temp.sh
 # @author CmPi <cmpi@webe.fr>
-# @brief Releve les températures CPU, NVMe et NAS ambient et les publie via MQTT
+# @brief Collects CPU, NVMe and NAS ambient temperatures and publishes to MQTT
 # @date 2025-12-27
-# @version 1.0.362
-# @usage À exécuter périodiquement (ex: via cron ou timer systemd)
+# @version 1.0.362.4
+# @usage Run periodically (e.g., via cron or systemd timer)
 # @notes * make it executable as usual using the command:
 #          chmod +x /usr/local/bin/*.sh
 #        * set DEBUG to true in config.conf and run it in simulation mode
@@ -66,7 +66,7 @@ if [[ "$PUSH_SYSTEM" == "true" ]]; then
 
     # --- CPU Load Average (5 min) ---
     if [[ -f /proc/loadavg ]]; then
-        CPU_LOAD=$(awk '{print $2}' /proc/loadavg)
+        CPU_LOAD=$(cut -d' ' -f2 /proc/loadavg)
         JSON_SYSTEM=$(jq --argjson v "$CPU_LOAD" '. + {cpu_load_5m: $v}' <<<"$JSON_SYSTEM")
         box_value "cpu load average (5 min)" "$CPU_LOAD"
     else
@@ -75,8 +75,10 @@ if [[ "$PUSH_SYSTEM" == "true" ]]; then
 
     # --- Memory Usage ---
     if [[ -f /proc/meminfo ]]; then
-        MEM_TOTAL=$(awk '/^MemTotal:/ {print int($2/1024)}' /proc/meminfo)
-        MEM_AVAILABLE=$(awk '/^MemAvailable:/ {print int($2/1024)}' /proc/meminfo)
+        MEM_TOTAL=$(grep '^MemTotal:' /proc/meminfo | tr -s ' ' | cut -d' ' -f2)
+        MEM_TOTAL=$((MEM_TOTAL / 1024))
+        MEM_AVAILABLE=$(grep '^MemAvailable:' /proc/meminfo | tr -s ' ' | cut -d' ' -f2)
+        MEM_AVAILABLE=$((MEM_AVAILABLE / 1024))
         MEM_USED=$((MEM_TOTAL - MEM_AVAILABLE))
         MEM_PERCENT=$((MEM_USED * 100 / MEM_TOTAL))
         JSON_SYSTEM=$(jq --argjson v "$MEM_TOTAL" '. + {mem_total_mb: $v}' <<<"$JSON_SYSTEM")
@@ -109,14 +111,14 @@ if [[ "$PUSH_SYSTEM" == "true" ]]; then
 
     # --- CPU Frequency ---
     if command -v lscpu >/dev/null; then
-        CPU_MAX_FREQ=$(lscpu | grep "max MHz" | awk '{print $NF}' | cut -d. -f1)
+        CPU_MAX_FREQ=$(lscpu | grep "max MHz" | grep -oP '\d+\.\d+' | cut -d. -f1)
         if [[ -n "$CPU_MAX_FREQ" ]]; then
             JSON_SYSTEM=$(jq --argjson v "$CPU_MAX_FREQ" '. + {cpu_max_freq_mhz: $v}' <<<"$JSON_SYSTEM")
             box_value "cpu max frequency" "${CPU_MAX_FREQ}MHz"
         fi
     fi
     if [[ -f /proc/cpuinfo ]]; then
-        CPU_CUR_FREQ=$(grep "cpu MHz" /proc/cpuinfo | head -1 | awk '{print int($NF)}')
+        CPU_CUR_FREQ=$(grep "cpu MHz" /proc/cpuinfo | head -1 | grep -oP '\d+\.\d+' | cut -d. -f1)
         if [[ -n "$CPU_CUR_FREQ" ]]; then
             JSON_SYSTEM=$(jq --argjson v "$CPU_CUR_FREQ" '. + {cpu_current_freq_mhz: $v}' <<<"$JSON_SYSTEM")
             if [[ -n "${CPU_MAX_FREQ:-}" ]] && [[ $CPU_CUR_FREQ -lt $((CPU_MAX_FREQ * 95 / 100)) ]]; then

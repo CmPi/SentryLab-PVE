@@ -5,7 +5,7 @@
 # @author CmPi <cmpi@webe.fr>
 # @brief Global functions for SentryLab-PVE
 # @date 2025-12-28
-# @version 1.0.362
+# @version 1.0.362.5
 # @usage source "$(dirname "$0")/utils.sh"
 # @notes * Make it executable: chmod +x /usr/local/bin/sentrylab/*.sh
 #        * Run directly to display current configuration
@@ -229,15 +229,17 @@ local csv_file="${1:-}"
         return 0
     fi
 
-    # 2. CAS : Header présent mais Data vide (Scan effectué, rien trouvé)
+    # 2. CASE: Header present but Data empty (Scan performed, nothing found)
     if [[ -n "$header" && -z "$data" ]]; then
         csv_content=$(echo -e "$header" | sed 's/\n$//')
         local status_msg="INFO: Only Header (No data)"
     else
         # 3. CAS : Header + Data (Normal)
         # Validation des colonnes
-        local c_hdr=$(echo -e "$header" | head -n 1 | awk -F',' '{print NF}')
-        local c_dat=$(echo -e "$data" | sed '/^$/d' | head -n 1 | awk -F',' '{print NF}')
+        local c_hdr=$(echo -e "$header" | head -n 1 | tr -cd ',' | wc -c)
+        c_hdr=$((c_hdr + 1))
+        local c_dat=$(echo -e "$data" | sed '/^$/d' | head -n 1 | tr -cd ',' | wc -c)
+        c_dat=$((c_dat + 1))
         [[ "$c_hdr" -ne "$c_dat" ]] && warn=" (Mismatch: $c_hdr/$c_dat cols)"
 
         csv_content=$(printf "%s\n%s" "$(echo -e "$header" | sed 's/\n$//')" "$(echo -e "$data" | sed '/^$/d')")
@@ -283,10 +285,11 @@ command_exists() {
 check_dependencies() {
     local exit_if_missing="${1:-true}"
 
-    local required_commands=("mosquitto_pub" "jq")
+    local required_commands=("mosquitto_pub" "jq" "grep" "bc")
 
     [[ "${PUSH_ZFS:-false}" == "true" ]] && required_commands+=("zpool")
     [[ "${PUSH_NON_ZFS:-false}" == "true" ]] && required_commands+=("df")
+    [[ "${PUSH_SYSTEM:-false}" == "true" ]] && required_commands+=("lscpu")
 #   [[ "${PUSH_NVME_TEMP:-false}" == "true" || "${PUSH_NVME_WEAR:-false}" == "true" || "${PUSH_NVME_HEALTH:-false}" == "true" ]] && required_commands+=("nvme")
         
     local missing_commands=()
@@ -314,13 +317,55 @@ check_dependencies() {
     fi
 }
 
+# Translate labels to configured language
+# Usage: translate "key"
+# Returns translated string based on $LANGUAGE setting
+translate() {
+    local key="$1"
+    local lang="${LANGUAGE:-en}"
+    
+    # Translation table: key|en|fr
+    declare -A translations=(
+        ["cpu_temp"]="CPU Temperature|Température CPU"
+        ["chassis_temp"]="Chassis Temperature|Température du chassis"
+        ["cpu_cores"]="CPU Cores|Nombre de Coeurs CPU"
+        ["cpu_load_5m"]="CPU Load (5 min)|Charge CPU (5 min)"
+        ["mem_total"]="Memory Total|Mémoire totale"
+        ["mem_used"]="Memory Used|Mémoire utilisée"
+        ["mem_usage_percent"]="Memory Usage|Pourcentage mémoire"
+        ["throttle_count"]="Thermal Throttle Events|Événements de limitation thermique"
+        ["cpu_max_freq"]="CPU Max Frequency|Fréquence CPU max"
+        ["cpu_current_freq"]="CPU Current Frequency|Fréquence CPU actuelle"
+        ["nvme_wear"]="SSD Wear|Usure du SSD"
+        ["nvme_health"]="SSD Health|Santé du SSD"
+        ["nvme_temp"]="Temperature|Température"
+        ["zfs_pool_status"]="Pool Status|Statut du pool"
+        ["zfs_pool_health"]="Pool Health|Santé du pool"
+        ["zfs_pool_usage"]="Pool Usage|Utilisation du pool"
+        ["zfs_pool_free"]="Pool Free Space|Espace libre du pool"
+        ["zfs_pool_size"]="Pool Size|Taille du pool"
+        ["zfs_pool_allocated"]="Pool Allocated Space|Espace alloué du pool"
+    )
+    
+    local trans="${translations[$key]}"
+    if [[ -z "$trans" ]]; then
+        echo "$key"  # Return key if no translation found
+        return
+    fi
+    
+    case "$lang" in
+        fr) echo "$trans" | cut -d'|' -f2 ;;
+        *)  echo "$trans" | cut -d'|' -f1 ;;  # Default to English
+    esac
+}
+
 # ==============================================================================
 # DISPLAY CONFIGURATION - BOX DRAWING FUNCTIONS
 # ==============================================================================
 
 BOX_WIDTH=80
 
-# Titre Majeur (Bordure double, centré)
+# Major Title (Double border, centered)
 box_title() {
     [[ "${DEBUG:-false}" != "true" ]] && return 0
     local title="$1"
@@ -385,7 +430,7 @@ box_begin() {
     printf "┐\n"
 }
 
-# Retourne la largeur affichée réelle (Unicode-safe)
+# Returns actual displayed width (Unicode-safe)
 str_width() {
     local s="$1"
     # Remove ANSI and measure character length using current UTF-8 locale
@@ -471,7 +516,7 @@ wrap_text() {
             fi
             
             if ((test_len <= max)); then
-                # Ça rentre
+                # It fits
                 if [[ -n "$cur" ]]; then
                     cur+=" $word"
                 else

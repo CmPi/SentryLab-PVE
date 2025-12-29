@@ -3,10 +3,10 @@
 #
 # @file /usr/local/bin/sentrylab/discovery.sh
 # @author CmPi <cmpi@webe.fr>
-# @brief Publie les capteurs du NAS vers Home Assistant pour la découverte automatique
+# @brief Publishes NAS sensors to Home Assistant for automatic discovery
 # @date 2025-12-28
-# @version 1.0.362.2
-# @usage à lancer au boot pour déclarer les capteurs Home Assistant
+# @version 1.0.362.5
+# @usage Run at boot to register Home Assistant sensors
 # @notes * make it executable as usual using the command:
 #          chmod +x /usr/local/bin/*.sh
 #        * set DEBUG to true in config.conf and run it in simulation mode to see the generated payloads (not published to MQTT)
@@ -86,7 +86,7 @@ if [[ "$PUSH_SYSTEM" == "true" ]]; then
     box_line ""
     box_line "CPU temperature"
     HA_ID="${HOST_NAME}_cpu_temp"
-    HA_LABEL="Température du CPU"
+    HA_LABEL=$(translate "cpu_temp")
     CFG_TOPIC="homeassistant/sensor/${HA_ID}/config"
     PAYLOAD=$(jq -n \
         --arg name "$HA_LABEL" \
@@ -165,7 +165,7 @@ if [[ "$PUSH_SYSTEM" == "true" ]]; then
     # --- CPU Load Average (5 min) ---
     if [[ -f /proc/loadavg ]]; then
         HA_ID="${HOST_NAME}_cpu_load_5m"
-        HA_LABEL="Charge CPU (5 min)"
+        HA_LABEL=$(translate "cpu_load_5m")
         CFG_TOPIC="homeassistant/sensor/${HA_ID}/config"
         PAYLOAD=$(jq -n \
             --arg name "$HA_LABEL" \
@@ -184,7 +184,7 @@ if [[ "$PUSH_SYSTEM" == "true" ]]; then
 
     # --- Memory Total ---
     HA_ID="${HOST_NAME}_mem_total"
-    HA_LABEL="Mémoire totale"
+    HA_LABEL=$(translate "mem_total")
     CFG_TOPIC="homeassistant/sensor/${HA_ID}/config"
     PAYLOAD=$(jq -n \
         --arg name "$HA_LABEL" \
@@ -201,7 +201,7 @@ if [[ "$PUSH_SYSTEM" == "true" ]]; then
 
     # --- Memory Used ---
     HA_ID="${HOST_NAME}_mem_used"
-    HA_LABEL="Mémoire utilisée"
+    HA_LABEL=$(translate "mem_used")
     CFG_TOPIC="homeassistant/sensor/${HA_ID}/config"
     PAYLOAD=$(jq -n \
         --arg name "$HA_LABEL" \
@@ -218,7 +218,7 @@ if [[ "$PUSH_SYSTEM" == "true" ]]; then
 
     # --- Memory Usage Percentage ---
     HA_ID="${HOST_NAME}_mem_usage_percent"
-    HA_LABEL="Pourcentage mémoire"
+    HA_LABEL=$(translate "mem_usage_percent")
     CFG_TOPIC="homeassistant/sensor/${HA_ID}/config"
     PAYLOAD=$(jq -n \
         --arg name "$HA_LABEL" \
@@ -235,7 +235,7 @@ if [[ "$PUSH_SYSTEM" == "true" ]]; then
 
     # --- Thermal Throttle Count ---
     HA_ID="${HOST_NAME}_throttle_count"
-    HA_LABEL="Événements de limitation thermique"
+    HA_LABEL=$(translate "throttle_count")
     CFG_TOPIC="homeassistant/sensor/${HA_ID}/config"
     PAYLOAD=$(jq -n \
         --arg name "$HA_LABEL" \
@@ -252,7 +252,7 @@ if [[ "$PUSH_SYSTEM" == "true" ]]; then
 
     # --- CPU Max Frequency ---
     HA_ID="${HOST_NAME}_cpu_max_freq"
-    HA_LABEL="Fréquence CPU max"
+    HA_LABEL=$(translate "cpu_max_freq")
     CFG_TOPIC="homeassistant/sensor/${HA_ID}/config"
     PAYLOAD=$(jq -n \
         --arg name "$HA_LABEL" \
@@ -269,7 +269,7 @@ if [[ "$PUSH_SYSTEM" == "true" ]]; then
 
     # --- CPU Current Frequency ---
     HA_ID="${HOST_NAME}_cpu_current_freq"
-    HA_LABEL="Fréquence CPU actuelle"
+    HA_LABEL=$(translate "cpu_current_freq")
     CFG_TOPIC="homeassistant/sensor/${HA_ID}/config"
     PAYLOAD=$(jq -n \
         --arg name "$HA_LABEL" \
@@ -327,7 +327,7 @@ for hw_path in /sys/class/hwmon/hwmon*; do
     # --- Wear sensor ---
     if [[ "$PUSH_NVME_WEAR" == "true" ]]; then
         HA_ID="nvme_${SN_LOWER}_wear"
-        HA_LABEL="Usure du SSD ${SN}"
+        HA_LABEL="$(translate "nvme_wear") ${SN}"
         CFG_TOPIC="homeassistant/sensor/${HA_ID}/config"      # pour temperature
         PAYLOAD=$(jq -n \
             --arg name "$HA_LABEL" \
@@ -355,7 +355,7 @@ for hw_path in /sys/class/hwmon/hwmon*; do
     if [[ "$PUSH_NVME_HEALTH" == "true" ]]; then
         # --- Health binary sensor ---
         HA_ID="nvme_${SN_LOWER}_health"
-        HA_LABEL="Santé du SSD ${SN} (slot ${NVME_SLOT_ID})"
+        HA_LABEL="$(translate "nvme_health") ${SN} (slot ${NVME_SLOT_ID})"
         CFG_TOPIC="homeassistant/binary_sensor/${HA_ID}/config" 
         PAYLOAD=$(jq -n \
             --arg name "$HA_LABEL" \
@@ -400,7 +400,7 @@ for hw_path in /sys/class/hwmon/hwmon*; do
             fi
             label_display=$(echo "$label" | sed 's/_/ /g' | sed 's/\b\(.\)/\u\1/g')
             HA_ID="nvme_${SN_LOWER}_${label}"
-            HA_LABEL="Température ${label_display} du SSD ${SN}"
+            HA_LABEL="$(translate "nvme_temp") ${label_display} du SSD ${SN}"
             CFG_TOPIC="homeassistant/sensor/${HA_ID}/config" 
             PAYLOAD=$(jq -n \
                 --arg name "$HA_LABEL" \
@@ -451,7 +451,7 @@ if [[ "$PUSH_ZFS" == "true" ]]; then
 
             # --- Health (sensor) ---
             HA_ID="${HOST_NAME}_zfs_${POOL_NORM}_status"
-            HA_LABEL="Statut du pool ${pool}"
+            HA_LABEL="$(translate "zfs_pool_status") ${pool}"
             CFG_TOPIC="homeassistant/sensor/${HA_ID}/config"
             PAYLOAD=$(jq -n \
                 --arg name "$HA_LABEL" \
@@ -479,7 +479,7 @@ if [[ "$PUSH_ZFS" == "true" ]]; then
 
             # --- Health status (binary sensor) ---
             HA_ID="${HOST_NAME}_zfs_${POOL_NORM}_health"
-            HA_LABEL="Santé du pool ${pool}"
+            HA_LABEL="$(translate "zfs_pool_health") ${pool}"
             CFG_TOPIC="homeassistant/binary_sensor/${HA_ID}/config"
             PAYLOAD=$(jq -n \
                 --arg name "$HA_LABEL" \
@@ -510,7 +510,7 @@ if [[ "$PUSH_ZFS" == "true" ]]; then
 
             # --- Usage percent ---
             HA_ID="${HOST_NAME}_zfs_${POOL_NORM}_usage"
-            HA_LABEL="Utilisation du pool ${pool}"
+            HA_LABEL="$(translate "zfs_pool_usage") ${pool}"
             CFG_TOPIC="homeassistant/sensor/${HA_ID}/config"
             PAYLOAD=$(jq -n \
                 --arg name "$HA_LABEL" \
@@ -540,7 +540,7 @@ if [[ "$PUSH_ZFS" == "true" ]]; then
             # --- Free space ---
 
             HA_ID="${HOST_NAME}_zfs_${POOL_NORM}_free_bytes"
-            HA_LABEL="Espace libre du pool ${pool}"
+            HA_LABEL="$(translate "zfs_pool_free") ${pool}"
             CFG_TOPIC="homeassistant/sensor/${HA_ID}/config"   
             PAYLOAD=$(jq -n \
                 --arg name "$HA_LABEL" \
@@ -571,7 +571,7 @@ if [[ "$PUSH_ZFS" == "true" ]]; then
 
             # --- Total size ---
             HA_ID="${HOST_NAME}_zfs_${POOL_NORM}_size_bytes"
-            HA_LABEL="Taille du pool ${pool}"
+            HA_LABEL="$(translate "zfs_pool_size") ${pool}"
             CFG_TOPIC="homeassistant/sensor/${HA_ID}/config"
             PAYLOAD=$(jq -n \
                 --arg name "$HA_LABEL" \
@@ -602,7 +602,7 @@ if [[ "$PUSH_ZFS" == "true" ]]; then
 
             # --- Allocated space ---
             HA_ID="${HOST_NAME}_zfs_${POOL_NORM}_allocated_bytes"
-            HA_LABEL="Espace alloué du pool ${pool}"
+            HA_LABEL="$(translate "zfs_pool_allocated") ${pool}"
             CFG_TOPIC="homeassistant/sensor/${HA_ID}/config"
             PAYLOAD=$(jq -n \
                 --arg name "$HA_LABEL" \
@@ -705,7 +705,7 @@ fi
 
 box_begin "Availability Confirmation"
 
-# On confirme la disponibilité du NAS
+# Confirm NAS availability
 mqtt_publish_retain "$AVAIL_TOPIC" "online"
 
 box_end

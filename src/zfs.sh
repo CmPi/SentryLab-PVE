@@ -3,13 +3,13 @@
 #
 # @file /usr/local/bin/sentrylab/zfs.sh
 # @author CmPi <cmpi@webe.fr>
-# @brief Relève la santé et les métriques des pools ZFS et les publie via MQTT
+# @brief Collects ZFS pool health and metrics and publishes to MQTT
 # @date 2025-12-27
-# @version 1.1.361
-# @usage À exécuter périodiquement (ex: toutes les 5 minutes via cron ou timer systemd)
+# @version 1.0.362.4
+# @usage Run periodically (e.g., every 5 minutes via cron or systemd timer)
 # @notes * make it executable as usual using the command:
-#          chmod +x /usr/local/bin/*.sh
-#        * Ce script ne réveille PAS les disques en veille
+#          chmod +x /usr/local/bin/sentrylab/zfs.sh
+#        * This script does NOT wake sleeping drives
 #
 
 set -euo pipefail
@@ -49,14 +49,14 @@ while IFS= read -r pool; do
     HEALTH=$(zpool list -H -o health "$pool" 2>/dev/null || echo "UNKNOWN")
     HEALTH_VAL=$([[ "$HEALTH" == "ONLINE" ]] && echo 1 || echo 0)
     
-    # --- Capacité ---
+    # --- Capacity ---
     SIZE=$(zpool list -H -o size -p "$pool" 2>/dev/null || echo "0")
     ALLOC=$(zpool list -H -o allocated -p "$pool" 2>/dev/null || echo "0")
     FREE=$(zpool list -H -o free -p "$pool" 2>/dev/null || echo "0")
     
     # Calculer le pourcentage d'utilisation
     if [[ "$SIZE" -gt 0 ]]; then
-        USAGE=$(awk "BEGIN {printf \"%.1f\", ($ALLOC / $SIZE) * 100}")
+        USAGE=$(printf "%.1f" "$(echo "scale=1; ($ALLOC / $SIZE) * 100" | bc)")
     else
         USAGE="0.0"
     fi
@@ -99,7 +99,7 @@ mqtt_publish_retain "$ZFS_TOPIC" "$JSON"
 
 log_debug "--- NAS ZFS SCAN COMPLETE ---"
 
-# --- Test mode si lancé directement ---
+# --- Test mode when run directly ---
 if [[ "${BASH_SOURCE[0]}" == "${0}" ]]; then
     [[ "${DEBUG:-false}" == "true" ]] && echo "$JSON" | jq .
 fi

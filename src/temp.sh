@@ -3,10 +3,10 @@
 #
 # @file /usr/local/bin/sentrylab/temp.sh
 # @author CmPi <cmpi@webe.fr>
-# @brief Releve les températures CPU, NVMe et NAS ambient et les publie via MQTT
+# @brief Collects CPU, NVMe and NAS ambient temperatures and publishes to MQTT
 # @date 2025-12-27
-# @version 1.1.361
-# @usage À exécuter périodiquement (ex: via cron ou timer systemd)
+# @version 1.0.362.4
+# @usage Run periodically (e.g., via cron or systemd timer)
 # @notes * make it executable as usual using the command:
 #          chmod +x /usr/local/bin/*.sh
 #        * set DEBUG to true in config.conf and run it in simulation mode
@@ -58,7 +58,7 @@ if [[ "$PUSH_SYSTEM" == "true" ]]; then
             [[ -f "$t_file" ]] || continue
             temp_num=$(basename "$t_file" | sed 's/temp\([0-9]*\)_input/\1/')
             raw_val=$(cat "$t_file" 2>/dev/null || echo "0")
-            temp_val=$(awk "BEGIN{printf \"%.1f\", $raw_val/1000}")
+            temp_val=$(printf "%.1f" "$(echo "scale=1; $raw_val/1000" | bc)")
             label_file="${t_file%_input}_label"
             if [[ -f "$label_file" ]]; then
                 label=$(cat "$label_file" | tr '[:upper:]' '[:lower:]' | tr ' ' '_')

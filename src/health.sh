@@ -2,13 +2,13 @@
 #
 # @file /usr/local/bin/sentrylab/health.sh
 # @author CmPi <cmpi@webe.fr>
-# @brief Relève le statut de santé des NVMe et les publie via MQTT
+# @brief Collects NVMe health status and publishes to MQTT
 # @date 2025-12-26
-# @version 1.0.359.5
-# @usage À exécuter périodiquement (ex: toutes les heures via cron ou timer systemd)
+# @version 1.0.362.4
+# @usage Run periodically (e.g., every hour via cron or systemd timer)
 # @notes make it executable as usual
 #        chmod +x /usr/local/bin/*.sh
-#        ATTENTION: Ce script utilise smartctl qui RÉVEILLE les disques en veille
+#        WARNING: This script uses smartctl which WAKES sleeping drives
 #
 
 set -euo pipefail
@@ -66,9 +66,9 @@ for hw_path in /sys/class/hwmon/hwmon*; do
     
     log_debug "Reading health status for $nvme_dev (S/N: $SN)"
     
-    # Lire le statut de santé avec smartctl
-    # ATTENTION: Cette commande RÉVEILLE le disque s'il est en veille
-    ST=$(smartctl -H "$DEV" 2>/dev/null | grep -i "test result" | awk -F: '{print $2}' | xargs)
+    # Read health status with smartctl
+    # WARNING: This command WAKES the drive if sleeping
+    ST=$(smartctl -H "$DEV" 2>/dev/null | grep -i "test result" | cut -d: -f2 | xargs)
     
     if [[ -z "$ST" ]]; then
         log_debug "  Could not read health status for $nvme_dev, skipping"
@@ -92,7 +92,7 @@ mqtt_publish "$HEALTH_TOPIC" "$JSON"
 
 log_debug "--- NAS HEALTH SCAN COMPLETE ---"
 
-# --- Test mode si lancé directement ---
+# --- Test mode when run directly ---
 if [[ "${BASH_SOURCE[0]}" == "${0}" ]]; then
     [[ "$DEBUG" == "true" ]] && echo "--- NAS HEALTH TEST ---"
     [[ "$DEBUG" == "true" ]] && echo "$JSON" | jq .
