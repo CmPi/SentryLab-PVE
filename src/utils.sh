@@ -604,8 +604,7 @@ box_value() {
             local vis=$(str_width "$line")
             local pad=$((avail - vis))
             [[ $pad -lt 0 ]] && pad=0
-            printf "│ %s%s%s%*s │\n" "$label_txt" "$color" "$line" "$pad" "" 
-            printf "%b" "$CLR" >/dev/null 2>&1 || true
+            printf "│ %s%b%s%b%*s │\n" "$label_txt" "$color" "$line" "$CLR" "$pad" ""
             first=false
         else
             # subsequent lines: indent to value column
@@ -616,8 +615,7 @@ box_value() {
             local indent=""
             # create spaces equal to label width
             for ((i=0;i<label_w;i++)); do indent+=" "; done
-            printf "│ %s%s%s%*s │\n" "$indent" "$color" "$line" "$pad" ""
-            printf "%b" "$CLR" >/dev/null 2>&1 || true
+            printf "│ %s%b%s%b%*s │\n" "$indent" "$color" "$line" "$CLR" "$pad" ""
         fi
     done <<< "$wrapped_value"
 }

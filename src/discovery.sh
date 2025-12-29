@@ -612,8 +612,8 @@ log_debug "--- DISCOVERY COMPLETE ---"
 
 if [[ -n "${OUTPUT_CSV_DIR:-}" ]]; then
     box_begin "CSV EXPORTS"
-    box_line "ZFS:"      "$(write_csv "zfs.csv" "$CSV_POOLS_HDR" "$CSV_POOLS_DATA")"
-    box_line "Standard:" "$(write_csv "standard_disks.csv" "$CSV_DISKS_HDR" "$CSV_DISKS_DATA")"
-    box_line "NVMe:"     "$(write_csv "nvme.csv" "$CSV_LINES")"
+    box_value "ZFS"      "$(write_csv "zfs.csv" "$CSV_POOLS_HDR" "$CSV_POOLS_DATA")"
+    box_value "Standard" "$(write_csv "standard_disks.csv" "$CSV_DISKS_HDR" "$CSV_DISKS_DATA")"
+    box_value "NVMe"     "$(write_csv "nvme.csv" "$CSV_LINES")"
     box_end
 fi
