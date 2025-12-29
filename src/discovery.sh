@@ -69,7 +69,8 @@ JSON=$(jq -n '{}')
 
 # --- CSVs for IA dashboard generation ---
 
-CSV_LINES="HA_ID,Type,Label,Serial,Slot"$'\n'
+CSV_NVME_HDR="HA_ID,Type,Label,Serial,Slot"
+CSV_NVME_DATA=""
 
 CSV_POOLS_HDR=""
 CSV_POOLS_DATA=""
@@ -121,7 +122,7 @@ if [[ "$PUSH_SYSTEM" == "true" ]]; then
     mqtt_publish_retain "$CFG_TOPIC" "$PAYLOAD"
     box_line "after"
 
-    CSV_SYSTEM_DATA+="${HA_ID},CPU temperature,Température du CPU"$'\n'
+    CSV_SYSTEM_DATA+="${HA_ID},\"CPU temperature\",\"Température du CPU\""$'\n'
 
     # --- 2. Register Chassis temperature sensor (not CPU related, I know) ---
 
@@ -154,7 +155,7 @@ if [[ "$PUSH_SYSTEM" == "true" ]]; then
     )
     mqtt_publish_retain "$CFG_TOPIC" "$PAYLOAD"
     box_line "Reached after Chassis config publish" "LIGHTGRAY"
-    CSV_SYSTEM_DATA+="${HA_ID},Chassis temperature,Température du chassis"$'\n'
+    CSV_SYSTEM_DATA+="${HA_ID},\"Chassis temperature\",\"Température du chassis\""$'\n'
 
     # --- CPU Cores (Static) ---
     if command -v nproc >/dev/null; then
@@ -172,7 +173,7 @@ if [[ "$PUSH_SYSTEM" == "true" ]]; then
             --argjson dev "$DEVICE_JSON" \
             '{name: $name, unique_id: $unique_id, object_id: $unique_id, state_topic: $stat_t, value_template: $val_tpl, icon: $icon, availability_topic: $av_t, dev: $dev}')
         mqtt_publish_retain "$CFG_TOPIC" "$PAYLOAD"
-        CSV_SYSTEM_DATA+="${HA_ID},Cores,Nombre de Coeurs CPU"$'\n'
+        CSV_SYSTEM_DATA+="${HA_ID},\"Cores\",\"Nombre de Coeurs CPU\""$'\n'
         box_line "CPU Cores registered ($CPU_CORES)"
     fi
 
@@ -192,7 +193,7 @@ if [[ "$PUSH_SYSTEM" == "true" ]]; then
             '{name: $name, unique_id: $unique_id, object_id: $unique_id, state_topic: $stat_t, value_template: $val_tpl, icon: $icon, availability_topic: $av_t, state_class: "measurement", suggested_display_precision: 2, dev: $dev}')
         
         mqtt_publish_retain "$CFG_TOPIC" "$PAYLOAD"
-        CSV_SYSTEM_DATA+="${HA_ID},Load (5m),Charge CPU (5 min)"$'\n'
+        CSV_SYSTEM_DATA+="${HA_ID},\"Load (5m)\",\"Charge CPU (5 min)\""$'\n'
         box_line "CPU Load (5mn): Registered"
     fi
 
@@ -210,7 +211,7 @@ if [[ "$PUSH_SYSTEM" == "true" ]]; then
         --argjson dev "$DEVICE_JSON" \
         '{name: $name, unique_id: $unique_id, object_id: $unique_id, state_topic: $stat_t, value_template: $val_tpl, unit_of_measurement: "MB", icon: $icon, availability_topic: $av_t, dev: $dev}')
     mqtt_publish_retain "$CFG_TOPIC" "$PAYLOAD"
-    CSV_SYSTEM_DATA+="${HA_ID},Memory Total,Mémoire totale"$'\n'
+    CSV_SYSTEM_DATA+="${HA_ID},\"Memory Total\",\"Mémoire totale\""$'\n'
     box_line "Memory Total: Registered"
 
     # --- Memory Used ---
@@ -227,7 +228,7 @@ if [[ "$PUSH_SYSTEM" == "true" ]]; then
         --argjson dev "$DEVICE_JSON" \
         '{name: $name, unique_id: $unique_id, object_id: $unique_id, state_topic: $stat_t, value_template: $val_tpl, unit_of_measurement: "MB", icon: $icon, availability_topic: $av_t, dev: $dev}')
     mqtt_publish_retain "$CFG_TOPIC" "$PAYLOAD"
-    CSV_SYSTEM_DATA+="${HA_ID},Memory Used,Mémoire utilisée"$'\n'
+    CSV_SYSTEM_DATA+="${HA_ID},\"Memory Used\",\"Mémoire utilisée\""$'\n'
     box_line "Memory Used: Registered"
 
     # --- Memory Usage Percentage ---
@@ -244,7 +245,7 @@ if [[ "$PUSH_SYSTEM" == "true" ]]; then
         --argjson dev "$DEVICE_JSON" \
         '{name: $name, unique_id: $unique_id, object_id: $unique_id, state_topic: $stat_t, value_template: $val_tpl, unit_of_measurement: "%", icon: $icon, availability_topic: $av_t, dev: $dev}')
     mqtt_publish_retain "$CFG_TOPIC" "$PAYLOAD"
-    CSV_SYSTEM_DATA+="${HA_ID},Memory Usage %,Pourcentage mémoire"$'\n'
+    CSV_SYSTEM_DATA+="${HA_ID},\"Memory Usage %\",\"Pourcentage mémoire\""$'\n'
     box_line "Memory Usage %: Registered"
 
     # --- Thermal Throttle Count ---
@@ -261,7 +262,7 @@ if [[ "$PUSH_SYSTEM" == "true" ]]; then
         --argjson dev "$DEVICE_JSON" \
             '{name: $name, unique_id: $unique_id, object_id: $unique_id, state_topic: $stat_t, value_template: $val_tpl, icon: $icon, availability_topic: $av_t, unit_of_measurement: "events", state_class: "total_increasing", dev: $dev}')
     mqtt_publish_retain "$CFG_TOPIC" "$PAYLOAD"
-    CSV_SYSTEM_DATA+="${HA_ID},Throttle Events,Événements de limitation thermique"$'\n'
+    CSV_SYSTEM_DATA+="${HA_ID},\"Throttle Events\",\"Événements de limitation thermique\""$'\n'
     box_line "Thermal Throttle Count: Registered"
 
     # --- CPU Max Frequency ---
@@ -278,7 +279,7 @@ if [[ "$PUSH_SYSTEM" == "true" ]]; then
         --argjson dev "$DEVICE_JSON" \
         '{name: $name, unique_id: $unique_id, object_id: $unique_id, state_topic: $stat_t, value_template: $val_tpl, unit_of_measurement: "MHz", icon: $icon, availability_topic: $av_t, dev: $dev}')
     mqtt_publish_retain "$CFG_TOPIC" "$PAYLOAD"
-    CSV_SYSTEM_DATA+="${HA_ID},CPU Max Frequency,Fréquence CPU max"$'\n'
+    CSV_SYSTEM_DATA+="${HA_ID},\"CPU Max Frequency\",\"Fréquence CPU max\""$'\n'
     box_line "CPU Max Frequency: Registered"
 
     # --- CPU Current Frequency ---
@@ -295,7 +296,7 @@ if [[ "$PUSH_SYSTEM" == "true" ]]; then
         --argjson dev "$DEVICE_JSON" \
         '{name: $name, unique_id: $unique_id, object_id: $unique_id, state_topic: $stat_t, value_template: $val_tpl, unit_of_measurement: "MHz", icon: $icon, availability_topic: $av_t, dev: $dev}')
     mqtt_publish_retain "$CFG_TOPIC" "$PAYLOAD"
-    CSV_SYSTEM_DATA+="${HA_ID},CPU Current Frequency,Fréquence CPU actuelle"$'\n'
+    CSV_SYSTEM_DATA+="${HA_ID},\"CPU Current Frequency\",\"Fréquence CPU actuelle\""$'\n'
     box_line "CPU Current Frequency: Registered"
 
     box_end
@@ -363,7 +364,7 @@ for hw_path in /sys/class/hwmon/hwmon*; do
             }'
         )
         mqtt_publish_retain "$CFG_TOPIC" "$PAYLOAD"
-        CSV_LINES+="${HOST_NAME}_${HA_ID},Wear,\"${HA_LABEL}\",${SN},${NVME_SLOT_ID}"$'\n'
+        CSV_NVME_DATA+="${HOST_NAME}_${HA_ID},Wear,\"${HA_LABEL}\",${SN},${NVME_SLOT_ID}"$'\n'
     fi
 
     if [[ "$PUSH_NVME_HEALTH" == "true" ]]; then
@@ -393,7 +394,7 @@ for hw_path in /sys/class/hwmon/hwmon*; do
             }'
         )
         mqtt_publish_retain "$CFG_TOPIC" "$PAYLOAD"
-        CSV_LINES+="${HOST_NAME}_${HA_ID},Health,\"${HA_LABEL}\",${SN},${NVME_SLOT_ID}"$'\n'
+        CSV_NVME_DATA+="${HOST_NAME}_${HA_ID},Health,\"${HA_LABEL}\",${SN},${NVME_SLOT_ID}"$'\n'
     fi
 
     if [[ "$PUSH_NVME_TEMP" == "true" ]]; then
@@ -437,7 +438,7 @@ for hw_path in /sys/class/hwmon/hwmon*; do
                 }'
             )
             mqtt_publish_retain "$CFG_TOPIC" "$PAYLOAD"
-            CSV_LINES+="${HOST_NAME}_${HA_ID},${label},\"${HA_LABEL}\",${SN},${NVME_SLOT_ID}"$'\n'
+            CSV_NVME_DATA+="${HOST_NAME}_${HA_ID},${label},\"${HA_LABEL}\",${SN},${NVME_SLOT_ID}"$'\n'
             box_line "Registered NVMe temperature sensor: $label"
         done
     fi
@@ -730,8 +731,9 @@ box_end
 
 if [[ -n "${OUTPUT_CSV_DIR:-}" ]]; then
     box_begin "CSV EXPORTS"
+    box_value "System"   "$(write_csv "system.csv" "$CSV_SYSTEM_HDR" "$CSV_SYSTEM_DATA")"
     box_value "ZFS"      "$(write_csv "zfs.csv" "$CSV_POOLS_HDR" "$CSV_POOLS_DATA")"
     box_value "Standard" "$(write_csv "standard_disks.csv" "$CSV_DISKS_HDR" "$CSV_DISKS_DATA")"
-    box_value "NVMe"     "$(write_csv "nvme.csv" "$CSV_LINES")"
+    box_value "NVMe"     "$(write_csv "nvme.csv" "$CSV_NVME_HDR" "$CSV_NVME_DATA")"
     box_end
 fi
