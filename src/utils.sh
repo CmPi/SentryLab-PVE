@@ -396,29 +396,49 @@ str_width() {
 }
 
 wrap_text() {
-    local text="${1-}"
-    local max="${2-0}"
-    local cur="" word out=""
-    # Cas chaîne vide → une ligne vide
+    local text="$1"
+    local max="${2:-0}"
+    local cur="" word out="" line
+    # Cas chaîne vide
     [[ -z "$text" ]] && { printf '\n'; return 0; }
-    for word in $text; do
-        local test
-        if [[ -n "$cur" ]]; then
-            test="$cur $word"
-        else
-            test="$word"
-        fi
-        if (( $(str_width "$test") <= max )); then
-            cur="$test"
-        else
-            out+="$cur"$'\n'
-            cur="$word"
-        fi
-    done
-    out+="$cur"
+    # On traite ligne par ligne (pour respecter les paragraphes existants)
+    while IFS= read -r line || [[ -n "$line" ]]; do
+        # Si on a déjà du contenu et qu'on change de ligne logique, on ajoute un saut
+        [[ -n "$out" ]] && out+=$'\n'
+        # Reset cur pour la nouvelle ligne
+        cur=""
+        # Découpage sécurisé des mots (read -a lit dans un tableau)
+        # On utilise <<< pour passer la ligne à read
+        read -ra words <<< "$line"
+        for word in "${words[@]}"; do
+            local test_len
+            if [[ -n "$cur" ]]; then
+                # Test : "cur + espace + word"
+                # Note: str_width doit gérer les codes couleurs pour être exact
+                test_len=$(str_width "$cur $word")
+            else
+                # Test : "word"
+                test_len=$(str_width "$word")
+            fi
+            if (( test_len <= max )); then
+                # Ça rentre : on ajoute
+                if [[ -n "$cur" ]]; then
+                    cur+=" $word"
+                else
+                    cur="$word"
+                fi
+            else
+                # Ça dépasse : on valide la ligne en cours et on commence la nouvelle
+                # Gestion du cas où un mot seul est plus long que max (on le laisse passer, on ne coupe pas le mot)
+                [[ -n "$cur" ]] && out+="$cur"$'\n'
+                cur="$word"
+            fi
+        done
+        # Ajouter le reste de la ligne courante
+        out+="$cur"
+    done <<< "$text"
     printf '%s' "$out"
 }
-
 
 box_line() {
     [[ "${DEBUG:-false}" != "true" ]] && return 0
@@ -428,24 +448,28 @@ box_line() {
     [[ ! "$width" =~ ^[0-9]+$ ]] && width=80
     local max=$((width - 4))
 
+    # Colors
     local RED='\033[31m'
     local GRN='\033[32m'
     local YEL='\033[33m'
     local CYA='\033[36m'
     local CLR='\033[0m'
 
-    local raw line colored plain vis pad suffix
+    local raw phys_line colored plain wrapped vis pad
 
-    # Si input vide → ligne vide
-    [[ -z "$input" ]] && { printf "│ %*s │\n" "$max" ""; return; }
+    # --- cas input vide ---
+    if [[ -z "$input" ]]; then
+        printf "│ %*s │\n" "$max" ""
+        return
+    fi
 
+    # --- lire ligne par ligne ---
     while IFS= read -r raw; do
-        # ---- Coloration ----
+        # ---- coloration ----
         if [[ "$raw" == *": "* ]]; then
             local label="${raw%%: *}: "
             local value="${raw#*: }"
 
-            # Reset color avant d'appliquer une nouvelle
             if [[ "$value" == ERROR* || "$value" == false ]]; then
                 value="${RED}${value}${CLR}"
             elif [[ "$value" == INFO* || "$value" == true || "$value" == "Directory exists" ]]; then
@@ -458,43 +482,21 @@ box_line() {
             colored="${label}${value}"
         else
             colored="$raw"
-            if [[ "$colored" == ERROR* ]]; then
-                colored="${RED}${colored}${CLR}"
-            elif [[ "$colored" == INFO* ]]; then
-                colored="${GRN}${colored}${CLR}"
-            fi
+            [[ "$colored" == ERROR* ]] && colored="${RED}${colored}${CLR}"
+            [[ "$colored" == INFO*  ]] && colored="${GRN}${colored}${CLR}"
         fi
 
-        # --- Calcul longueur visible (strip ANSI) ---
-        # On utilise sed pour retirer les codes ANSI et compter la vraie longueur
-        plain=$(printf '%s' "$colored" | sed 's/\x1b\[[0-9;]*m//g')
-        vis=${#plain}
+        plain=$(strip_ansi "$colored")
+        wrapped=$(wrap_text "$plain" "$max")
 
-        # --- Gestion de la largeur (Tronquature si trop long) ---
-        # Note: Faire un "wrap" multi-lignes avec préservation des couleurs en bash pur est très complexe.
-        # Ici, on préfère tronquer avec "..." pour garder les couleurs intactes sur la ligne visible.
-        
-        if [[ $vis -gt $max ]]; then
-            # On garde les (max - 3) premiers caractères + "..."
-            # Attention: cela coupe le texte brut, pas forcément au mot près
-            local overflow=$((vis - max + 3))
-            # On retire l'excédent de la fin de la chaîne colorée (approximation)
-            # C'est délicat car les codes couleurs comptent pour des octets mais pas pour l'affichage.
-            # Pour rester simple et sûr: on affiche tel quel, mais ça déborde, 
-            # OU on utilise un utilitaire externe comme 'fold' (mais 'fold' casse les couleurs).
-            
-            # Solution robuste simple: On ne coupe pas, on laisse déborder (risque de layout)
-            # OU on coupe brutalement la chaîne COLOREE en gérant les codes.
-            
-            # Pour ce script, nous allons simplement afficher la ligne colorée.
-            # Si elle est trop longue, elle dépassera de la boîte (comportement par défaut de printf sans wrap complexe).
-            printf "│ %b │\n" "$colored"
-        else
-            # Cas normal: padding à droite
+        # ---- rendu physique ligne par ligne ----
+        while IFS= read -r phys_line; do
+            vis=$(str_width "$phys_line")
             pad=$((max - vis))
-            # %b permet d'interpréter les échappements ANSI (\033)
-            printf "│ %b%*s │\n" "$colored" "$pad" ""
-        fi
+            printf "│ %b%*s │\n" \
+                "${colored%%"$plain"*}$phys_line${colored#"$plain"}" \
+                "$pad" ""
+        done <<< "$wrapped"
 
     done <<< "$input"
 }
