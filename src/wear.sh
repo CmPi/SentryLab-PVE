@@ -37,8 +37,6 @@ if [[ "${PUSH_NVME_WEAR:-false}" == "true" ]]; then
     # --- Initialisation JSON ---
     JSON=$(jq -n '{}')
 
-    log_debug "--- NAS WEAR SCAN STARTING ---"
-
     # --- Gather NVMe Wear Levels ---
     for hw_path in /sys/class/hwmon/hwmon*; do
         hw_name=$(cat "$hw_path/name" 2>/dev/null || echo "")
@@ -51,7 +49,7 @@ if [[ "${PUSH_NVME_WEAR:-false}" == "true" ]]; then
         nvme_dev=$(echo "$nvme_link" | grep -oP 'nvme\d+' | head -n1)
 
         if [[ -z "$nvme_dev" ]]; then
-            log_debug "Could not determine nvme device for $(basename $hw_path)"
+            box_line "ERROR: Could not determine nvme device for $(basename $hw_path)"
             continue
         fi
         
@@ -59,7 +57,7 @@ if [[ "${PUSH_NVME_WEAR:-false}" == "true" ]]; then
         SN=$(cat "/sys/class/nvme/$nvme_dev/serial" 2>/dev/null | tr -d ' ')
         
         if [[ -z "$SN" ]]; then
-            log_debug "Could not retrieve serial number for $nvme_dev"
+            box_line "WARNING: Could not retrieve serial number for $nvme_dev"
             continue
         fi
         
@@ -69,11 +67,11 @@ if [[ "${PUSH_NVME_WEAR:-false}" == "true" ]]; then
         DEV="/dev/${nvme_dev}n1"
         
         if [[ ! -e "$DEV" ]]; then
-            log_debug "Device not found: $DEV"
+            box_line "ERROR: Device not found: $DEV"
             continue
         fi
         
-        log_debug "Reading wear level for $nvme_dev (S/N: $SN)"
+        box_line "Reading wear level for $nvme_dev (S/N: $SN)"
         
         # Lire le niveau d'usure avec smartctl
         # WARNING: This command WAKES the drive if sleeping
@@ -96,9 +94,6 @@ if [[ "${PUSH_NVME_WEAR:-false}" == "true" ]]; then
     else
         log_debug "DEBUG mode: MQTT publish skipped"
     fi
-
-
-    log_debug "--- NAS WEAR SCAN COMPLETE ---"
 
     # --- Test mode when run directly ---
     if [[ "${BASH_SOURCE[0]}" == "${0}" ]]; then
