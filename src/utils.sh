@@ -56,8 +56,18 @@ load_config() {
     for config_path in "${config_paths[@]}"; do
         if [[ -f "$config_path" ]]; then
             CONFIG_PATH="$config_path"
+            
+            # Preserve DEBUG if already set in environment
+            local DEBUG_PRESERVED="${DEBUG:-}"
+            
             # shellcheck source=/dev/null
             source "$CONFIG_PATH"
+            
+            # Restore DEBUG from environment if it was set
+            if [[ -n "$DEBUG_PRESERVED" ]]; then
+                DEBUG="$DEBUG_PRESERVED"
+            fi
+            
             config_found=true
             break
         fi
