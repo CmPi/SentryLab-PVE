@@ -751,17 +751,17 @@ if [[ "$PUSH_NON_ZFS" == "true" ]]; then
         fi
 
         # 1. Publication MQTT Discovery - Free space sensor
-        PAYLOAD_F=$(jq -n --arg name "Libre ${target}" --arg id "$HA_FREE_ID" --arg oid "${DISK_ID}_free_bytes" --arg st "$BASE_TOPIC/disk/${DISK_ID}" --arg av "$AVAIL_TOPIC" --argjson dev "$DEVICE_JSON" \
+        PAYLOAD_F=$(jq -n --arg name "Libre ${target}" --arg id "$HA_FREE_ID" --arg oid "${HOST_NAME}_disk_${DISK_ID}_free_bytes" --arg st "$BASE_TOPIC/disk/${DISK_ID}" --arg av "$AVAIL_TOPIC" --argjson dev "$DEVICE_JSON" \
             '{name: $name, unique_id: $id, object_id: $oid, state_topic: $st, value_template: "{{ value_json.free_bytes }}", device_class: "data_size", unit_of_measurement: "B", availability_topic: $av, dev: $dev}')
         mqtt_publish_retain "homeassistant/sensor/${HA_FREE_ID}/config" "$PAYLOAD_F"
 
         # 2. Publication MQTT Discovery - Total size sensor
-        PAYLOAD_T=$(jq -n --arg name "Total ${target}" --arg id "$HA_SIZE_ID" --arg oid "${DISK_ID}_size_bytes" --arg st "$BASE_TOPIC/disk/${DISK_ID}" --arg av "$AVAIL_TOPIC" --argjson dev "$DEVICE_JSON" \
+        PAYLOAD_T=$(jq -n --arg name "Total ${target}" --arg id "$HA_SIZE_ID" --arg oid "${HOST_NAME}_disk_${DISK_ID}_size_bytes" --arg st "$BASE_TOPIC/disk/${DISK_ID}" --arg av "$AVAIL_TOPIC" --argjson dev "$DEVICE_JSON" \
             '{name: $name, unique_id: $id, object_id: $oid, state_topic: $st, value_template: "{{ value_json.size_bytes }}", device_class: "data_size", unit_of_measurement: "B", availability_topic: $av, dev: $dev}')
         mqtt_publish_retain "homeassistant/sensor/${HA_SIZE_ID}/config" "$PAYLOAD_T"
 
         # 3. Publication MQTT Discovery - Power state sensor (active/standby)
-        PAYLOAD_S=$(jq -n --arg name "État ${target}" --arg id "$HA_POWER_STATE_ID" --arg oid "${DISK_ID}_power_state" --arg st "$BASE_TOPIC/disks/states" --arg vt "value_json.${DISK_ID}_power_state" --arg av "$AVAIL_TOPIC" --argjson dev "$DEVICE_JSON" \
+        PAYLOAD_S=$(jq -n --arg name "État ${target}" --arg id "$HA_POWER_STATE_ID" --arg oid "${HOST_NAME}_disk_${DISK_ID}_power_state" --arg st "$BASE_TOPIC/disks/states" --arg vt "value_json.${DISK_ID}_power_state" --arg av "$AVAIL_TOPIC" --argjson dev "$DEVICE_JSON" \
             '{name: $name, unique_id: $id, object_id: $oid, state_topic: $st, value_template: ("{{ " + $vt + " }}"), icon: "mdi:power-sleep", availability_topic: $av, dev: $dev}')
         mqtt_publish_retain "homeassistant/sensor/${HA_POWER_STATE_ID}/config" "$PAYLOAD_S"
 
