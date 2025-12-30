@@ -925,6 +925,13 @@ display_config() {
 # Display configuration when run directly
 if [[ "${BASH_SOURCE[0]}" == "${0}" ]]; then
 # Check dependencies on load
+
+# DEBUG: Show if DEBUG variable is received
+echo "=== DEBUG CHECK ==="
+echo "DEBUG variable: ${DEBUG:-not set}"
+echo "DEBUG effective value: ${DEBUG:-false}"
+echo "==================="
+
     display_config
 else
     check_dependencies   
