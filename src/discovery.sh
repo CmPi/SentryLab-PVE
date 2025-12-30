@@ -27,12 +27,6 @@ else
     exit 1
 fi
 
-# DEBUG: Show if DEBUG variable is received
-echo "=== DEBUG CHECK ==="
-echo "DEBUG variable: ${DEBUG:-not set}"
-echo "DEBUG effective value: ${DEBUG:-false}"
-echo "==================="
-
 # Show failing command and location when run interactively
 if [[ "${INTERACTIVE:-false}" == "true" ]]; then
     trap 'ec=$?; box_line "ERROR: ${BASH_COMMAND} failed at ${BASH_SOURCE[0]}:${LINENO} (exit ${ec})" RED; exit ${ec}' ERR

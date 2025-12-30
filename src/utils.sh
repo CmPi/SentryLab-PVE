@@ -880,7 +880,7 @@ box_end() {
 
 # Display loaded configuration when run directly
 display_config() {
-#    clear
+    clear
     local color=""
     box_title "SentryLab-PVE Configuration" 
 
@@ -934,14 +934,7 @@ display_config() {
 
 # Display configuration when run directly
 if [[ "${BASH_SOURCE[0]}" == "${0}" ]]; then
-# Check dependencies on load
-
-# DEBUG: Show if DEBUG variable is received
-echo "=== DEBUG CHECK ==="
-echo "DEBUG variable: ${DEBUG:-not set}"
-echo "DEBUG effective value: ${DEBUG:-false}"
-echo "==================="
-
+    # Check dependencies on load
     display_config
 else
     check_dependencies   
