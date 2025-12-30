@@ -27,6 +27,12 @@ else
     exit 1
 fi
 
+# DEBUG: Show if DEBUG variable is received
+echo "=== DEBUG CHECK ==="
+echo "DEBUG variable: ${DEBUG:-not set}"
+echo "DEBUG effective value: ${DEBUG:-false}"
+echo "==================="
+
 # Show failing command and location when run interactively
 if [[ "${INTERACTIVE:-false}" == "true" ]]; then
     trap 'ec=$?; box_line "ERROR: ${BASH_COMMAND} failed at ${BASH_SOURCE[0]}:${LINENO} (exit ${ec})" RED; exit ${ec}' ERR
@@ -725,7 +731,7 @@ if [[ "$PUSH_NON_ZFS" == "true" ]]; then
 
     box_begin "Standard Partitions Discovery"
 
-    CSV_DISKS_HDR="Mountpoint,FSType,Free_Space_ID,Total_Size_ID"
+    CSV_DISKS_HDR="Mountpoint,FSType,Free_Space_ID,Total_Size_ID,Power_State_ID"
     CSV_DISKS_DATA=""
 
     while read -r target fstype; do
@@ -734,6 +740,7 @@ if [[ "$PUSH_NON_ZFS" == "true" ]]; then
         
         HA_FREE_ID="${HOST_NAME}_disk_${DISK_ID}_free_bytes"
         HA_SIZE_ID="${HOST_NAME}_disk_${DISK_ID}_size_bytes"
+        HA_POWER_STATE_ID="${HOST_NAME}_disk_${DISK_ID}_power_state"
 
         # Skip non-pertinent pseudo or tiny filesystems (eg. efivars)
         case "$fstype" in
@@ -749,19 +756,23 @@ if [[ "$PUSH_NON_ZFS" == "true" ]]; then
             continue
         fi
 
-        # 1. Publication MQTT (Seulement le brut)
-        # Capteur Libre
-        PAYLOAD_F=$(jq -n --arg name "Libre ${target}" --arg id "$HA_FREE_ID" --arg st "$DISK_TOPIC" --arg v "value_json.${DISK_ID}_free_bytes" --arg av "$AVAIL_TOPIC" --argjson dev "$DEVICE_JSON" \
-            '{name: $name, unique_id: $id, object_id: $id, state_topic: $st, value_template: ("{{ " + $v + " }}"), device_class: "data_size", unit_of_measurement: "B", availability_topic: $av, dev: $dev}')
+        # 1. Publication MQTT Discovery - Free space sensor
+        PAYLOAD_F=$(jq -n --arg name "Libre ${target}" --arg id "$HA_FREE_ID" --arg oid "${DISK_ID}_free_bytes" --arg st "$BASE_TOPIC/disk/${DISK_ID}" --arg av "$AVAIL_TOPIC" --argjson dev "$DEVICE_JSON" \
+            '{name: $name, unique_id: $id, object_id: $oid, state_topic: $st, value_template: "{{ value_json.free_bytes }}", device_class: "data_size", unit_of_measurement: "B", availability_topic: $av, dev: $dev}')
         mqtt_publish_retain "homeassistant/sensor/${HA_FREE_ID}/config" "$PAYLOAD_F"
 
-        # Capteur Total
-        PAYLOAD_T=$(jq -n --arg name "Total ${target}" --arg id "$HA_SIZE_ID" --arg st "$DISK_TOPIC" --arg v "value_json.${DISK_ID}_size_bytes" --arg av "$AVAIL_TOPIC" --argjson dev "$DEVICE_JSON" \
-            '{name: $name, unique_id: $id, object_id: $id, state_topic: $st, value_template: ("{{ " + $v + " }}"), device_class: "data_size", unit_of_measurement: "B", availability_topic: $av, dev: $dev}')
+        # 2. Publication MQTT Discovery - Total size sensor
+        PAYLOAD_T=$(jq -n --arg name "Total ${target}" --arg id "$HA_SIZE_ID" --arg oid "${DISK_ID}_size_bytes" --arg st "$BASE_TOPIC/disk/${DISK_ID}" --arg av "$AVAIL_TOPIC" --argjson dev "$DEVICE_JSON" \
+            '{name: $name, unique_id: $id, object_id: $oid, state_topic: $st, value_template: "{{ value_json.size_bytes }}", device_class: "data_size", unit_of_measurement: "B", availability_topic: $av, dev: $dev}')
         mqtt_publish_retain "homeassistant/sensor/${HA_SIZE_ID}/config" "$PAYLOAD_T"
 
-        # 2. Construction de la donnée CSV
-        CSV_DISKS_DATA+=$'\n'"\"${target}\",${fstype},${HA_FREE_ID},${HA_SIZE_ID}"
+        # 3. Publication MQTT Discovery - Power state sensor (active/standby)
+        PAYLOAD_S=$(jq -n --arg name "État ${target}" --arg id "$HA_POWER_STATE_ID" --arg oid "${DISK_ID}_power_state" --arg st "$BASE_TOPIC/disks/states" --arg vt "value_json.${DISK_ID}_power_state" --arg av "$AVAIL_TOPIC" --argjson dev "$DEVICE_JSON" \
+            '{name: $name, unique_id: $id, object_id: $oid, state_topic: $st, value_template: ("{{ " + $vt + " }}"), icon: "mdi:power-sleep", availability_topic: $av, dev: $dev}')
+        mqtt_publish_retain "homeassistant/sensor/${HA_POWER_STATE_ID}/config" "$PAYLOAD_S"
+
+        # 4. Construction de la donnée CSV
+        CSV_DISKS_DATA+=$'\n'"\"${target}\",${fstype},${HA_FREE_ID},${HA_SIZE_ID},${HA_POWER_STATE_ID}"
 
         # Debug visuel dans tes boîtes (label/value)
         box_value "Registered" "$target" 80
@@ -780,9 +791,27 @@ mqtt_publish_retain "$AVAIL_TOPIC" "online"
 box_end
 
 
+# --- 5. MQTT Cleanup (Schema Changes) ---
+# Remove obsolete retained topics from previous versions
+# This ensures smooth upgrades without manual MQTT broker cleanup
+
+box_begin "MQTT Schema Cleanup"
+
+# v1.0.363 -> v1.0.365: Non-ZFS disks topic structure changed
+# Before: single topic "proxmox/<host>/disks" with all disks in one JSON
+# After: per-disk topics "proxmox/<host>/disk/<disk_id>" with separate metrics
+box_line "Cleaning up obsolete topics from schema changes..."
+
+if mqtt_delete_retained "$DISK_TOPIC"; then
+    box_line "Deleted obsolete topic: $DISK_TOPIC (v1.0.363 schema)" "GREEN"
+else
+    box_line "Failed to delete obsolete topic: $DISK_TOPIC" "RED"
+fi
+
+box_end
 
 
-# --- 5. CSV Export Section ---
+# --- 6. CSV Export Section ---
 
 if [[ -n "${OUTPUT_CSV_DIR:-}" ]]; then
     box_begin "CSV EXPORTS"

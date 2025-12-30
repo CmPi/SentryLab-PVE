@@ -213,6 +213,33 @@ mqtt_publish_retain() {
     fi
 }
 
+# Delete retained MQTT message (cleanup old topics)
+# Usage: mqtt_delete_retained "topic"
+mqtt_delete_retained() {
+    local topic="$1"
+
+    if [[ -z "$topic" ]]; then
+        log_error "MQTT topic is empty for deletion"
+        return 1
+    fi
+
+    if [[ "${DEBUG:-false}" == "true" ]]; then
+        box_line "SIMULATED - Would delete retained topic: $topic" "YELLOW"
+        return 0
+    fi
+
+    # Publish empty message with retain flag to delete retained topic
+    if mosquitto_pub -h "$BROKER" -p "$PORT" \
+                     -u "$USER" -P "$PASS" \
+                     -t "$topic" -n -r -q "${MQTT_QOS:-1}"; then
+        log_debug "Deleted retained topic: $topic"
+        return 0
+    else
+        log_error "Failed to delete retained topic: $topic"
+        return 1
+    fi
+}
+
 # Publish MQTT message without retain flag (for transient data)
 # Usage: mqtt_publish_no_retain "topic" "payload"
 mqtt_publish_no_retain() {

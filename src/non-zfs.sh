@@ -38,7 +38,7 @@ if [[ "${PUSH_NON_ZFS:-false}" == "true" ]]; then
 
     box_line "INFO: Non-ZFS drives metrics publishing is enabled (PUSH_NON_ZFS == true)"
 
-    JSON_DISKS="{}"
+    JSON_STATES="{}"
     FOUND_DISKS=0
 
     while read -r source target fstype size_bytes free_bytes; do
@@ -56,27 +56,44 @@ if [[ "${PUSH_NON_ZFS:-false}" == "true" ]]; then
             continue
         fi
 
-        # Skip sleeping devices in passive mode (best-effort)
-        if [[ "$MONITOR_MODE" == "passive" && "$source" == /dev/* ]]; then
+        # Determine sleep state
+        POWER_STATE="active"
+        if [[ "$source" == /dev/* ]]; then
             if ! device_is_awake "$source"; then
-                box_line "SKIP: $target on $source sleeping (passive mode)"
-                continue
+                POWER_STATE="standby"
+                if [[ "$MONITOR_MODE" == "passive" ]]; then
+                    box_line "SKIP: $target on $source in standby (passive mode)"
+                    # Add power state to JSON, skip metrics
+                    JSON_STATES=$(jq --arg id "${DISK_ID}_power_state" --arg state "$POWER_STATE" '. + {($id): $state}' <<<"$JSON_STATES")
+                    continue
+                fi
             fi
         fi
 
-        JSON_DISKS=$(jq --argjson v "$free_bytes" '. + {"'"${DISK_ID}"'_free_bytes": $v}' <<<"$JSON_DISKS")
-        JSON_DISKS=$(jq --argjson v "$size_bytes" '. + {"'"${DISK_ID}"'_size_bytes": $v}' <<<"$JSON_DISKS")
+        # Build JSON payload for this disk (metrics only)
+        JSON_DISK=$(jq -n --argjson free "$free_bytes" --argjson size "$size_bytes" \
+            '{free_bytes: $free, size_bytes: $size}')
+        
+        # Publish metrics for this disk
+        mqtt_publish_retain "$BASE_TOPIC/disk/${DISK_ID}" "$JSON_DISK"
+        
+        # Add power state to states JSON
+        JSON_STATES=$(jq --arg id "${DISK_ID}_power_state" --arg state "$POWER_STATE" '. + {($id): $state}' <<<"$JSON_STATES")
 
-        box_value "Captured" "$target" 80
+        box_value "Captured" "$target ($POWER_STATE)" 80
         FOUND_DISKS=$((FOUND_DISKS + 1))
 
     done < <(df -B1 -x tmpfs -x devtmpfs -x zfs --output=source,target,fstype,size,avail | tail -n +2)
 
+    # Publish all states in one call
+    if [[ "$JSON_STATES" != "{}" ]]; then
+        mqtt_publish_retain "$BASE_TOPIC/disks/states" "$JSON_STATES"
+    fi
+
     if [[ $FOUND_DISKS -eq 0 ]]; then
         box_line "INFO: No eligible non-ZFS mountpoints found"
     else
-        mqtt_publish_retain "$DISK_TOPIC" "$JSON_DISKS"
-        box_line "Published non-ZFS disk metrics to MQTT (retained)" "MAGENTA"
+        box_line "Published $FOUND_DISKS non-ZFS disk metrics to MQTT (retained)" "MAGENTA"
     fi
 
 else
