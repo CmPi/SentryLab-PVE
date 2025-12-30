@@ -24,8 +24,9 @@ src/
     non-zfs.sh              # Non-ZFS volumes
     monitor-passive.sh      # Lightweight cycle (no wake)
     monitor-active.sh       # Invasive cycle (SMART/ZFS sync)
-    *.service/*.timer       # systemd units
     start.sh / stop.sh      # Enable/disable all timers
+    system/
+        *.service/*.timer   # systemd units
 esphome/
     sentrylab-witty.yaml    # Witty Cloud example
     fragments.yaml          # Reusable RGB logic
@@ -48,7 +49,7 @@ sudo ./install.sh
 Installer targets:
 - Scripts: `/usr/local/bin/sentrylab/`
 - Config: `/usr/local/etc/sentrylab.conf`
-- Units: `/etc/systemd/system/`
+- Units: copied to `/usr/local/bin/sentrylab/system/` (deployed to `/etc/systemd/system/` only when `start.sh` is used, removed when `stop.sh` is used, subject to backup)
 - CSV exports: `/var/lib/sentrylab/exports/`
 
 ## Configure
@@ -79,6 +80,18 @@ Suggested cadences (edit timers if needed):
 - Passive: every 3–5 minutes
 - Active: 15–30 minutes (or daily for SMART)
 - Discovery: at boot or when sensor set changes
+
+## Uninstall
+```bash
+cd SentryLab-PVE
+sudo ./uninstall.sh
+```
+The uninstaller will:
+1. Run `stop.sh` to disable and stop all services/timers
+2. Remove any systemd units from `/etc/systemd/system/` that weren't properly cleaned up
+3. Remove all scripts from `/usr/local/bin/sentrylab/`
+4. Ask if you want to delete the backup/export directory (`/var/lib/sentrylab/`)
+5. Remind you to manually remove the config file if desired: `/usr/local/etc/sentrylab.conf`
 
 ## MQTT Topics (proxmox/<HOST>)
 - `system`: load/uptime/memory/storage summary

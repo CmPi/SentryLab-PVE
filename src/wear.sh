@@ -4,7 +4,7 @@
 # @file /usr/local/bin/sentrylab/wear.sh
 # @author CmPi <cmpi@webe.fr>
 # @brief Collects NVMe wear levels and publishes to MQTT
-# @date 2025-12-29
+# @date creation 2025-12-29
 # @version 1.0.363
 # @usage Run periodically (e.g., every hour via cron or systemd timer)
 # @notes * make it executable as usual

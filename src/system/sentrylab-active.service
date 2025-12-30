@@ -1,0 +1,21 @@
+#
+# @file /etc/systemd/system/sentrylab-active.service
+# @author CmPi <cmpi@webe.fr>
+# @repo https://github.com/CmPi/SentryLab-PVE
+# @brief Service launching SentryLab active sensors polling, potentially awaking devices
+# @version 1.0.362.6
+#
+
+[Unit]
+Description=SentryLab active sensors polling (potentially wakes disks)
+After=network-online.target sentrylab-discovery.service
+Wants=network-online.target
+
+[Service]
+Type=oneshot
+ExecStart=/usr/local/bin/sentrylab/monitor-active.sh
+StandardOutput=journal
+StandardError=journal
+
+[Install]
+WantedBy=multi-user.target

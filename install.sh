@@ -4,7 +4,7 @@
 # @author CmPi <cmpi@webe.fr>
 # @repo https://github.com/CmPi/SentryLab-PVE
 # @brief Root installation script for SentryLab-PVE
-# @date 2025-12-28
+# @date creation 2025-12-28
 # @version 1.0.362
 # @usage sudo ./install.sh
 #
@@ -26,8 +26,7 @@ echo "--- SentryLab Installation ---"
 
 # 1. Create Directories
 mkdir -p "$DEST_DIR"
-mkdir -p "$DEST_DIR/systemd"
-mkdir -p "$DEST_DIR/systemd_backup"
+mkdir -p "$DEST_DIR/system"
 mkdir -p "$EXPORT_DIR"
 
 # 2. Deploy Scripts from ./src
@@ -40,21 +39,21 @@ else
     exit 1
 fi
 
-# 3. Deploy Services & Timers to systemd subfolder
-echo "Staging systemd services and timers to $DEST_DIR/systemd..."
-if [ -d "./src" ]; then
-    cp ./src/*.service "$DEST_DIR/systemd/" 2>/dev/null || true
-    cp ./src/*.timer "$DEST_DIR/systemd/" 2>/dev/null || true
-    chmod 644 "$DEST_DIR/systemd"/*.service "$DEST_DIR/systemd"/*.timer 2>/dev/null || true
+# 3. Deploy Services & Timers to system subfolder
+echo "Staging systemd services and timers to $DEST_DIR/system..."
+if [ -d "./src/system" ]; then
+    cp ./src/system/*.service "$DEST_DIR/system/" 2>/dev/null || true
+    cp ./src/system/*.timer "$DEST_DIR/system/" 2>/dev/null || true
+    chmod 644 "$DEST_DIR/system"/*.service "$DEST_DIR/system"/*.timer 2>/dev/null || true
 else
-    echo "ERROR: ./src directory not found for services and timers!"
+    echo "ERROR: ./src/system directory not found for services and timers!"
     exit 1
 fi
 
 # 4. Deploy Config (Template)
 if [ ! -f "$CONF_FILE" ]; then
     echo "Installing configuration to $CONF_FILE..."
-    cp ./sentrylab.conf "$CONF_FILE"
+    cp ./src/sentrylab.conf "$CONF_FILE"
     chmod 600 "$CONF_FILE"
 else
     echo "Configuration exists at $CONF_FILE. Skipping overwrite."

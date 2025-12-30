@@ -4,7 +4,7 @@
 # @file start.sh
 # @author CmPi <cmpi@webe.fr>
 # @brief Activate SentryLab systemd services and timers
-# @date 2025-12-29
+# @date creation 2025-12-29
 # @version 1.0.363
 # @usage sudo /usr/local/bin/sentrylab/start.sh
 #

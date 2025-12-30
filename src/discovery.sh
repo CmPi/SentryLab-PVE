@@ -5,7 +5,7 @@
 # @file /usr/local/bin/sentrylab/discovery.sh
 # @author CmPi <cmpi@webe.fr>
 # @brief Publishes NAS sensors to Home Assistant for automatic discovery
-# @date 2025-12-28
+# @date creation 2025-12-28
 # @version 1.0.362.5
 # @usage Run at boot to register Home Assistant sensors
 # @notes * make it executable as usual using the command:

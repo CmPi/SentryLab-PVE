@@ -4,7 +4,7 @@
 # @file /usr/local/bin/sentrylab/active.sh
 # @author CmPi <cmpi@webe.fr>
 # @brief Orchestrator for active monitoring (may wake disks)
-# @date 2025-12-29
+# @date creation 2025-12-29
 # @version 1.0.363
 # @usage Called by sentrylab-active.timer (evening or opportunistic)
 # @notes Respects PUSH_* flags from sentrylab.conf

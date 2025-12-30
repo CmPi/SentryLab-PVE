@@ -4,7 +4,7 @@
 # @file /usr/local/bin/sentrylab/passive.sh
 # @author CmPi <cmpi@webe.fr>
 # @brief Orchestrator for passive monitoring (no disk wake)
-# @date 2025-12-29
+# @date creation 2025-12-29
 # @version 1.0.363
 # @usage Called by sentrylab-passive.timer every 3-5 minutes
 # @notes Respects PUSH_* flags from sentrylab.conf

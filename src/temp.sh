@@ -4,7 +4,7 @@
 # @file /usr/local/bin/sentrylab/temp.sh
 # @author CmPi <cmpi@webe.fr>
 # @brief Collects CPU, NVMe and NAS ambient temperatures and publishes to MQTT
-# @date 2025-12-27
+# @date creation 2025-12-27
 # @version 1.0.362.4
 # @usage Run periodically (e.g., via cron or systemd timer)
 # @notes * make it executable as usual using the command:
